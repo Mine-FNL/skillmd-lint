@@ -3,6 +3,26 @@
 All notable changes to `skillmd-lint` are recorded here. Dates are
 ISO-8601 (YYYY-MM-DD).
 
+## [1.1.2] — 2026-09-17
+
+### Added
+
+- **`examples/` skill gallery** — 10 curated reference SKILL.md files
+  that all pass `skillmd-lint --strict --schema` with zero findings.
+  Covers a `specialist` (api-pagination), a `domain-expert`
+  (postgres-migrations), a `workflow` (git-bisect-bugs), and a `hybrid`
+  meta-skill (skillmd-authoring), plus six more across REST API
+  pagination, TypeScript strict-mode migration, code review checklists,
+  distributed tracing, refactor/rename, WireGuard VPN, and CSP headers.
+- **`examples/README.md`** — gallery index with one-line descriptions.
+- **`examples/run_lint.sh`** — CI-friendly script that lints every
+  skill in the gallery and exits non-zero on any finding.
+
+### Changed
+
+- Top-level `README.md` now links to the gallery and calls out
+  `examples/run_lint.sh` as the recommended regression check.
+
 ## [1.1.0] — 2026-09-17
 
 ### Added
@@ -50,5 +70,6 @@ ISO-8601 (YYYY-MM-DD).
 - Pre-commit hook config.
 - 39 tests, 74% coverage.
 
+[1.1.2]: https://github.com/Mine-FNL/skillmd-lint/compare/v1.1.0...v1.1.2
 [1.1.0]: https://github.com/Mine-FNL/skillmd-lint/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Mine-FNL/skillmd-lint/releases/tag/v1.0.0

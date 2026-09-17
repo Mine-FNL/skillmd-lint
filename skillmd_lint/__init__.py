@@ -21,7 +21,7 @@ Quick start::
         raise SystemExit(1)
 """
 
-__version__ = "1.1.0"
+__version__ = "1.1.2"
 
 from .cli import main as _cli_main
 from .rules import (

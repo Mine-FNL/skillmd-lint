@@ -8,7 +8,7 @@ CI-friendly. Offline. No API key. Schema-validated.
 [![CI](https://github.com/Mine-FNL/skillmd-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/Mine-FNL/skillmd-lint/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![v1.1](https://img.shields.io/badge/version-1.1.0-blueviolet.svg)](CHANGELOG.md)
+[![v1.1](https://img.shields.io/badge/version-1.1.2-blueviolet.svg)](CHANGELOG.md)
 [![Schema](https://img.shields.io/badge/json--schema-2020--12-blue)](skillmd_frontmatter.schema.json)
 
 </div>
@@ -89,6 +89,20 @@ path/to/skill/SKILL.md
 ```
 
 Exit code: **0** when all rules pass (warnings allowed); **1** on any error.
+
+## Skill gallery
+
+The `examples/` directory ships a curated gallery of 10 reference
+`SKILL.md` files that all pass `skillmd-lint --strict --schema` with
+**zero findings**. Use them as starting points when authoring your own
+skill, or as a regression suite — [`examples/run_lint.sh`](examples/run_lint.sh)
+walks every skill and exits non-zero on any finding. See
+[`examples/README.md`](examples/README.md) for the index and one-line
+descriptions.
+
+The gallery covers a range of skill shapes: a `specialist` (api-pagination),
+a `domain-expert` (postgres-migrations), a `workflow` (git-bisect-bugs),
+and a `hybrid` meta-skill (skillmd-authoring).
 
 ## Rules
 
