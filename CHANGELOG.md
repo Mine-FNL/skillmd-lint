@@ -1,0 +1,54 @@
+# Changelog
+
+All notable changes to `skillmd-lint` are recorded here. Dates are
+ISO-8601 (YYYY-MM-DD).
+
+## [1.1.0] — 2026-09-17
+
+### Added
+
+- **Six new rules** (`W008`–`W013` + `E010`):
+  - `W008` frontmatter key typo detection (e.g. `desription` → `description`).
+  - `W009` `skill_type` is one of the four recognised values.
+  - `W010` `version` is valid semver (`X.Y.Z[-prerelease]`).
+  - `W011` `token_budget` is a positive integer; rejects `True`/`False`
+    explicitly because `bool` is a subclass of `int` in Python.
+  - `W012` `## Pitfalls to avoid` (or equivalent) section in body.
+  - `W013` each tag is lowercase kebab-case.
+  - `E010` `tags` list contains no duplicates.
+- **JSON Schema** (`skillmd_frontmatter.schema.json` + bundled
+  `skillmd_lint/schema.json`): Draft 2020-12 schema for the frontmatter
+  block, with pure-Python validator (`validate_frontmatter()`) — no extra
+  runtime dependency.
+- **`--schema` CLI flag** to opt into schema validation on top of the
+  rule engine; schema findings are reported with codes `S001`..`S999`.
+- **`--list-rules` CLI flag** to print the canonical rule table; same
+  table is exposed as `RULE_INDEX` from Python.
+- **`get_schema()` / `validate_frontmatter()`** public API.
+- **Cross-platform tests** (`tests/test_cross_platform.py`) covering CRLF,
+  CR, mixed line endings, UTF-8 BOM, non-ASCII, and `pathlib.Path` paths.
+- **CI matrix** now runs on Ubuntu, macOS, and Windows.
+
+### Changed
+
+- Bumped Python to `>=3.10` (unchanged) but added explicit 3.13 classifier.
+- README reorganised around the new rules and the JSON Schema section.
+
+### Coverage
+
+- 100 tests pass.
+- 91% line coverage (`cli.py` 90%, `rules.py` 95%, `schema.py` 84%).
+
+## [1.0.0] — 2026-09-17
+
+### Added
+
+- Initial release.
+- 16 rules: `E001`–`E009`, `W001`–`W007`.
+- `--format {human,json,github}`, `--strict`, `--quiet`, `--version` flags.
+- GitHub Action: [`Mine-FNL/skillmd-lint-action`](https://github.com/Mine-FNL/skillmd-lint-action).
+- Pre-commit hook config.
+- 39 tests, 74% coverage.
+
+[1.1.0]: https://github.com/Mine-FNL/skillmd-lint/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/Mine-FNL/skillmd-lint/releases/tag/v1.0.0

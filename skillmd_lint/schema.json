@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Mine-FNL/skillmd-lint/skillmd_frontmatter.schema.json",
+  "title": "SKILL.md frontmatter",
+  "description": "Mirror copy of skillmd_frontmatter.schema.json at the repo root. Bundled into the wheel so the schema validator works without the source checkout.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["name", "description"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "skill_type": {
+      "type": "string",
+      "enum": ["domain-expert", "specialist", "workflow", "hybrid"]
+    },
+    "domain_focus": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "uniqueItems": true
+    },
+    "entities": { "type": "array", "items": { "type": "string" } },
+    "base_skill": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.\\-]+)?$"
+    },
+    "version_notes": { "type": "string" },
+    "token_budget": { "type": "integer", "minimum": 1 },
+    "tone": { "type": "string" },
+    "model": { "type": "string" },
+    "references": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -83,6 +83,48 @@ NEGATIVE_TRIGGER_PHRASES = (
     "skip when",
 )
 
+# Common frontmatter typos. Mapped to the canonical key.
+FRONTMATTER_TYPO_MAP: dict[str, str] = {
+    "desription": "description",
+    "desc": "description",
+    "descriptions": "description",
+    "nme": "name",
+    "naem": "name",
+    "skill_type": "skill_type",  # canonical, included for clarity
+    "type": "skill_type",
+    "kind": "skill_type",
+    "tokkens": "tokens",
+    "tokn_budget": "token_budget",
+    "token-budget": "token_budget",
+    "tagss": "tags",
+    "tag": "tags",
+    "entites": "entities",
+    "entity": "entities",
+    "domian": "domain",
+    "doamin": "domain",
+}
+
+# Recognised frontmatter keys (kept loose: unknown keys are not flagged).
+RECOGNISED_FRONTMATTER_KEYS: frozenset[str] = frozenset(
+    {
+        "name",
+        "description",
+        "skill_type",
+        "domain_focus",
+        "tags",
+        "entities",
+        "base_skill",
+        "version",
+        "version_notes",
+        "token_budget",
+        "tone",
+        "model",
+        "references",
+    }
+)
+
+VALID_SKILL_TYPES: frozenset[str] = frozenset({"domain-expert", "specialist", "workflow", "hybrid"})
+
 
 class LintSeverity(str, Enum):
     """Severity of a lint finding."""
@@ -372,6 +414,176 @@ def _rule_has_examples(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
 
 
 # ---------------------------------------------------------------------------
+# v1.1 rules
+# ---------------------------------------------------------------------------
+
+
+SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.\-]+)?$")
+TAG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
+
+def _rule_frontmatter_typos(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W008: detect common frontmatter-key typos (desription, desc, nme, …)."""
+
+    if not fm:
+        return
+    for key in list(fm.keys()):
+        suggestion = FRONTMATTER_TYPO_MAP.get(key)
+        if not suggestion or suggestion == key:
+            continue
+        yield LintFinding(
+            code="W008",
+            severity=LintSeverity.WARNING,
+            message=(f"frontmatter key '{key}' looks like a typo; did you mean '{suggestion}'?"),
+        )
+
+
+def _rule_skill_type_valid(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W009: `skill_type`, if present, must be a recognised value."""
+
+    st = fm.get("skill_type")
+    if st is None or st == "":
+        return
+    if not isinstance(st, str):
+        yield LintFinding(
+            code="W009",
+            severity=LintSeverity.WARNING,
+            message=(
+                f"`skill_type` must be a string; got {type(st).__name__}. "
+                f"Valid values: {sorted(VALID_SKILL_TYPES)}"
+            ),
+        )
+        return
+    if st not in VALID_SKILL_TYPES:
+        yield LintFinding(
+            code="W009",
+            severity=LintSeverity.WARNING,
+            message=(
+                f"`skill_type` '{st}' is not a recognised value; expected one of "
+                f"{sorted(VALID_SKILL_TYPES)}"
+            ),
+        )
+
+
+def _rule_version_semver(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W010: `version`, if present, must be valid semver (X.Y.Z[-prerelease])."""
+
+    ver = fm.get("version")
+    if ver is None or ver == "":
+        return
+    if not isinstance(ver, str) or not SEMVER_RE.match(ver):
+        yield LintFinding(
+            code="W010",
+            severity=LintSeverity.WARNING,
+            message=(
+                f"`version` '{ver}' is not valid semver (expected e.g. '1.0.0' or '1.0.0-rc.1')"
+            ),
+        )
+
+
+def _rule_token_budget_sane(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W011: `token_budget`, if present, must be a positive integer."""
+
+    tb = fm.get("token_budget")
+    if tb is None:
+        return
+    # bool is a subclass of int — reject it explicitly so True/False don't slip through.
+    if isinstance(tb, bool) or not isinstance(tb, int) or tb <= 0:
+        yield LintFinding(
+            code="W011",
+            severity=LintSeverity.WARNING,
+            message=(f"`token_budget` must be a positive integer; got {tb!r}"),
+        )
+
+
+def _rule_pitfalls_section(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W012: body should have a '## Pitfalls to avoid' (or equivalent) section."""
+
+    body_low = body.lower()
+    if not any(
+        marker in body_low
+        for marker in (
+            "## pitfalls",
+            "## gotchas",
+            "## common mistakes",
+            "## what to avoid",
+        )
+    ):
+        yield LintFinding(
+            code="W012",
+            severity=LintSeverity.WARNING,
+            message=(
+                "no '## Pitfalls to avoid' (or equivalent) section; documenting "
+                "common mistakes sharply improves skill reliability"
+            ),
+        )
+
+
+def _rule_tags_format(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W013: every tag should be lowercase kebab-case (a-z, 0-9, single hyphen)."""
+
+    tags = fm.get("tags")
+    if tags is None:
+        return
+    if not isinstance(tags, list):
+        yield LintFinding(
+            code="W013",
+            severity=LintSeverity.WARNING,
+            message=(f"`tags` must be a list; got {type(tags).__name__}"),
+        )
+        return
+    seen: set[str] = set()
+    for tag in tags:
+        if not isinstance(tag, str):
+            yield LintFinding(
+                code="W013",
+                severity=LintSeverity.WARNING,
+                message=(f"tag must be a string; got {type(tag).__name__}: {tag!r}"),
+            )
+            continue
+        if tag in seen:
+            # Duplicates get the E010 code; the format rule stays clean.
+            continue
+        seen.add(tag)
+        if not tag:
+            yield LintFinding(
+                code="W013",
+                severity=LintSeverity.WARNING,
+                message="tag must be non-empty",
+            )
+            continue
+        if not TAG_RE.match(tag):
+            yield LintFinding(
+                code="W013",
+                severity=LintSeverity.WARNING,
+                message=(
+                    f"tag '{tag}' must be lowercase kebab-case (letters, digits, "
+                    "single hyphens; no underscores, spaces, or uppercase)"
+                ),
+            )
+
+
+def _rule_tags_unique(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """E010: tags list must not contain duplicates."""
+
+    tags = fm.get("tags")
+    if not isinstance(tags, list):
+        return
+    seen: set[str] = set()
+    for tag in tags:
+        if not isinstance(tag, str):
+            continue
+        if tag in seen:
+            yield LintFinding(
+                code="E010",
+                severity=LintSeverity.ERROR,
+                message=f"duplicate tag: '{tag}'",
+            )
+        else:
+            seen.add(tag)
+
+
+# ---------------------------------------------------------------------------
 # Rule registry
 # ---------------------------------------------------------------------------
 
@@ -389,6 +601,42 @@ _RULES = [
     _rule_body_length,
     _rule_when_to_use_section,
     _rule_has_examples,
+    _rule_frontmatter_typos,
+    _rule_skill_type_valid,
+    _rule_version_semver,
+    _rule_token_budget_sane,
+    _rule_pitfalls_section,
+    _rule_tags_format,
+    _rule_tags_unique,
+]
+
+
+# Public list of all (code, severity, summary) for the CLI --list output and for
+# docs generation. Kept in sync with ``_RULES`` above.
+RULE_INDEX: list[tuple[str, str, str]] = [
+    ("E001", "error", "SKILL.md file not found at folder root"),
+    ("E002", "error", "frontmatter is missing or not valid YAML"),
+    ("E003", "error", "`name` missing or empty"),
+    ("E004", "error", "`name` not lowercase kebab-case"),
+    ("E005", "error", "`name` collides with a reserved word"),
+    ("E006", "error", "`name` exceeds 64 characters"),
+    ("E007", "error", "`description` missing or empty"),
+    ("E008", "error", "`description` exceeds 1024 characters"),
+    ("E009", "error", "`description` contains XML tags"),
+    ("E010", "error", "`tags` list contains duplicates"),
+    ("W001", "warning", "description missing positive trigger phrase"),
+    ("W002", "warning", "description missing negative trigger"),
+    ("W003", "warning", "body has fewer than 20 lines"),
+    ("W004", "warning", "body exceeds 200 lines"),
+    ("W005", "warning", "no `## When to use` section in body"),
+    ("W006", "warning", "no concrete examples in body"),
+    ("W007", "warning", "skills/ subfolder has no `SKILL.md`"),
+    ("W008", "warning", "frontmatter key looks like a typo"),
+    ("W009", "warning", "`skill_type` is not a recognised value"),
+    ("W010", "warning", "`version` is not valid semver"),
+    ("W011", "warning", "`token_budget` is not a positive integer"),
+    ("W012", "warning", "no `## Pitfalls to avoid` section in body"),
+    ("W013", "warning", "tag is not lowercase kebab-case"),
 ]
 
 

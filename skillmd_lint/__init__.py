@@ -7,6 +7,9 @@ Public API:
 - :func:`lint_file` — lint a single file by path.
 - :func:`lint_text` — lint SKILL.md content from a string.
 - :func:`lint_folder` — lint a folder; returns the union of file-level results.
+- :func:`validate_frontmatter` — strict JSON Schema validation of the
+  frontmatter dict (raises ``list[str]`` of human-readable violations).
+- :func:`get_schema` — return the parsed JSON Schema for SKILL.md frontmatter.
 - :func:`main` — CLI entrypoint (``python -m skillmd_lint``).
 
 Quick start::
@@ -18,28 +21,35 @@ Quick start::
         raise SystemExit(1)
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from .cli import main as _cli_main
 from .rules import (
+    RULE_INDEX,
     LintFinding,
     LintResult,
     LintSeverity,
     lint_file,
     lint_folder,
+    lint_paths,
     lint_text,
 )
+from .schema import get_schema, validate_frontmatter
 
 # Re-export ``main`` under its natural name for ``python -m skillmd_lint``.
 main = _cli_main
 
 __all__ = [
+    "RULE_INDEX",
     "LintFinding",
     "LintResult",
     "LintSeverity",
     "__version__",
+    "get_schema",
     "lint_file",
     "lint_folder",
+    "lint_paths",
     "lint_text",
     "main",
+    "validate_frontmatter",
 ]

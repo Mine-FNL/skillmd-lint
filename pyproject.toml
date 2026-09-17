@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skillmd-lint"
-version = "1.0.0"
-description = "Lint and validate SKILL.md files against the open SKILL.md spec. CI-friendly, offline, no API key."
+version = "1.1.0"
+description = "Lint and validate SKILL.md files against the open SKILL.md spec. CI-friendly, offline, no API key, schema-validated."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -14,6 +14,7 @@ keywords = [
     "skill-md",
     "lint",
     "validator",
+    "json-schema",
     "claude",
     "anthropic",
     "openai",
@@ -21,6 +22,7 @@ keywords = [
     "agentskills",
     "ci",
     "pre-commit",
+    "github-action",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -30,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Text Processing :: Markup :: Markdown",
 ]
@@ -41,13 +44,21 @@ dependencies = [
 Homepage = "https://github.com/Mine-FNL/skillmd-lint"
 Issues = "https://github.com/Mine-FNL/skillmd-lint/issues"
 "Source" = "https://github.com/Mine-FNL/skillmd-lint"
+"Schema" = "https://github.com/Mine-FNL/skillmd-lint/blob/main/skillmd_frontmatter.schema.json"
+"Changelog" = "https://github.com/Mine-FNL/skillmd-lint/blob/main/CHANGELOG.md"
 
 [project.scripts]
 skillmd-lint = "skillmd_lint.cli:main"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 include = ["skillmd_lint*"]
 exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+skillmd_lint = ["schema.json"]
 
 [tool.ruff]
 line-length = 100
@@ -67,3 +78,11 @@ addopts = ["-ra", "--strict-markers", "--strict-config"]
 
 [tool.coverage.run]
 source = ["skillmd_lint"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]

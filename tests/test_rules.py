@@ -23,6 +23,12 @@ description: |
   specialist for those.
 skill_type: domain-expert
 domain_focus: REST API design
+tags:
+  - api
+  - rest
+  - backend
+version: 1.0.0
+token_budget: 1800
 ---
 
 # Backend API Engineer
@@ -310,3 +316,218 @@ class TestRegistry:
         assert "errors" in d
         assert "warnings" in d
         assert "passed" in d
+
+
+# ---------------------------------------------------------------------------
+# v1.1 rules: W008..W013 + E010
+# ---------------------------------------------------------------------------
+
+
+class TestFrontmatterTypos:
+    def test_typo_description(self):
+        text = "---\nname: my-skill\ndesription: Use when X. Don't use for Y.\n---\n" + (
+            "line\n" * 25
+        )
+        r = lint_text(text)
+        codes = {f.code for f in r.warnings}
+        assert "W008" in codes
+
+    def test_typo_with_dash_form(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "token-budget: 100\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W008" in {f.code for f in r.warnings}
+
+    def test_no_typo_clean(self):
+        # VALID fixture has no typos → no W008.
+        r = lint_text(VALID)
+        assert "W008" not in {f.code for f in r.warnings}
+
+
+class TestSkillTypeValid:
+    def test_unknown_skill_type(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "skill_type: ninja\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W009" in {f.code for f in r.warnings}
+
+    def test_valid_skill_type(self):
+        r = lint_text(VALID)
+        assert "W009" not in {f.code for f in r.warnings}
+
+
+class TestVersionSemver:
+    def test_non_semver_version(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "version: v1.0\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W010" in {f.code for f in r.warnings}
+
+    def test_semver_with_prerelease(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "version: 1.0.0-rc.1\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W010" not in {f.code for f in r.warnings}
+
+    def test_valid_version(self):
+        r = lint_text(VALID)
+        assert "W010" not in {f.code for f in r.warnings}
+
+
+class TestTokenBudgetSane:
+    def test_negative_token_budget(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "token_budget: -5\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W011" in {f.code for f in r.warnings}
+
+    def test_string_token_budget(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "token_budget: 'a lot'\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W011" in {f.code for f in r.warnings}
+
+    def test_bool_token_budget(self):
+        # bool is an int subclass — must be rejected explicitly.
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "token_budget: true\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W011" in {f.code for f in r.warnings}
+
+    def test_zero_token_budget(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "token_budget: 0\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W011" in {f.code for f in r.warnings}
+
+
+class TestPitfallsSection:
+    def test_no_pitfalls_section(self):
+        # Body has ## When to use and ## Examples but no Pitfalls.
+        body = (
+            "## When to use\n\n"
+            "Use this skill.\n\n"
+            "## Examples\n\n"
+            "For example, this is the only example.\n" + ("line\n" * 25)
+        )
+        text = "---\nname: my-skill\ndescription: Use when X. Don't use for Y.\n---\n" + body
+        r = lint_text(text)
+        assert "W012" in {f.code for f in r.warnings}
+
+    def test_pitfalls_alternate_heading(self):
+        body = (
+            "## When to use\n\n"
+            "Use this skill.\n\n"
+            "## Examples\n\n"
+            "For example.\n\n"
+            "## Common mistakes\n\n"
+            "Don't do X.\n" + ("line\n" * 25)
+        )
+        text = "---\nname: my-skill\ndescription: Use when X. Don't use for Y.\n---\n" + body
+        r = lint_text(text)
+        assert "W012" not in {f.code for f in r.warnings}
+
+
+class TestTagsFormat:
+    def test_uppercase_tag(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "tags:\n  - Backend\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W013" in {f.code for f in r.warnings}
+
+    def test_underscore_tag(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "tags:\n  - some_tag\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "W013" in {f.code for f in r.warnings}
+
+    def test_duplicate_tag_is_error(self):
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "tags:\n  - api\n  - api\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        assert "E010" in {f.code for f in r.errors}
+
+    def test_valid_tags(self):
+        r = lint_text(VALID)
+        assert "W013" not in {f.code for f in r.warnings}
+        assert "E010" not in {f.code for f in r.errors}
+
+
+class TestRULE_INDEX:
+    def test_index_lists_every_rule(self):
+        # The index is the canonical rule table — every rule in _RULES must be
+        # represented, and the codes must be unique.
+        from skillmd_lint.rules import RULE_INDEX
+
+        # No duplicate codes in the index.
+        codes = [c for c, _, _ in RULE_INDEX]
+        assert len(codes) == len(set(codes))
+
+        # Index should cover at least the 6 new v1.1 codes.
+        assert "W008" in codes
+        assert "W013" in codes
+        assert "E010" in codes
+
+        # Index summary should mention the right words for grep-ability.
+        summaries = {c: s for c, _, s in RULE_INDEX}
+        assert "typo" in summaries["W008"]
+        assert "skill_type" in summaries["W009"]
+        assert "semver" in summaries["W010"]
+        assert "token_budget" in summaries["W011"]
+        assert "Pitfalls" in summaries["W012"]
+        assert "duplicate" in summaries["E010"]

@@ -8,10 +8,12 @@ import sys
 
 from . import __version__
 from .rules import (
+    RULE_INDEX,
     LintResult,
     LintSeverity,
     lint_paths,
 )
+from .schema import validate_frontmatter
 
 _HUMAN_GLYPHS = {
     LintSeverity.ERROR: "✗ error",
@@ -86,6 +88,21 @@ def _format_json(results: list[LintResult], strict: bool) -> str:
     return json.dumps(out, indent=2)
 
 
+def _format_rules_list() -> str:
+    lines: list[str] = []
+    lines.append("skillmd-lint rules (v" + __version__ + "):")
+    lines.append("")
+    lines.append(f"  {'CODE':<6}  {'SEVERITY':<8}  SUMMARY")
+    lines.append(f"  {'----':<6}  {'--------':<8}  -------")
+    for code, sev, summary in RULE_INDEX:
+        lines.append(f"  {code:<6}  {sev:<8}  {summary}")
+    n_err = sum(1 for c, s, _ in RULE_INDEX if s == "error")
+    n_warn = sum(1 for c, s, _ in RULE_INDEX if s == "warning")
+    lines.append("")
+    lines.append(f"  {n_err} error rules, {n_warn} warning rules.")
+    return "\n".join(lines)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="skillmd-lint",
@@ -96,7 +113,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "paths",
-        nargs="+",
+        nargs="*",
         help="SKILL.md file or skill folder to lint (folders ending in 'skills' are walked).",
     )
     p.add_argument(
@@ -109,6 +126,19 @@ def _build_parser() -> argparse.ArgumentParser:
         "--strict",
         action="store_true",
         help="Treat warnings as errors.",
+    )
+    p.add_argument(
+        "--schema",
+        action="store_true",
+        help=(
+            "Run JSON Schema validation on top of the rule engine. Schema "
+            "violations are reported as warnings with code S001..S999."
+        ),
+    )
+    p.add_argument(
+        "--list-rules",
+        action="store_true",
+        help="Print the full rule table and exit.",
     )
     p.add_argument(
         "--version",
@@ -124,9 +154,85 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _run_schema(results: list[LintResult]) -> list[LintResult]:
+    """Augment results with S001 schema findings for any frontmatter that
+    violates the published JSON Schema. Operates per-file; non-SKILL.md files
+    (no frontmatter) are skipped.
+    """
+
+    from .rules import LintFinding
+
+    out: list[LintResult] = []
+    for r in results:
+        if not r.looks_like_skill:
+            out.append(r)
+            continue
+        # Re-derive frontmatter from the path so we can validate it. We don't
+        # carry the parsed fm through the result intentionally — schema
+        # validation is opt-in.
+        try:
+            from pathlib import Path
+
+            import yaml
+
+            text = Path(r.path).read_text(encoding="utf-8", errors="replace")
+        except (OSError, UnicodeError):
+            out.append(r)
+            continue
+        stripped = text.lstrip("\ufeff")
+        if not stripped.startswith("---"):
+            out.append(r)
+            continue
+        lines_text = stripped.splitlines()
+        end = None
+        for i in range(1, len(lines_text)):
+            if lines_text[i].strip() == "---":
+                end = i
+                break
+        if end is None:
+            out.append(r)
+            continue
+        try:
+            fm = yaml.safe_load("\n".join(lines_text[1:end])) or {}
+        except yaml.YAMLError:
+            out.append(r)
+            continue
+        if not isinstance(fm, dict):
+            out.append(r)
+            continue
+        new_findings = list(r.findings)
+        for i, msg in enumerate(validate_frontmatter(fm), start=1):
+            new_findings.append(
+                LintFinding(
+                    code=f"S{i:03d}",
+                    severity=LintSeverity.WARNING,
+                    message=f"schema: {msg}",
+                )
+            )
+        out.append(
+            LintResult(
+                path=r.path,
+                findings=new_findings,
+                looks_like_skill=r.looks_like_skill,
+            )
+        )
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+
+    if args.list_rules:
+        sys.stdout.write(_format_rules_list() + "\n")
+        return 0
+
+    if not args.paths:
+        sys.stderr.write("skillmd-lint: error: at least one path is required\n")
+        return 2
+
     results = lint_paths(args.paths)
+    if args.schema:
+        results = _run_schema(results)
 
     if args.format == "json":
         sys.stdout.write(_format_json(results, args.strict))

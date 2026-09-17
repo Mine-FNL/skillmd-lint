@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Mine-FNL/skillmd-lint/skillmd_frontmatter.schema.json",
+  "title": "SKILL.md frontmatter",
+  "description": "JSON Schema for the YAML frontmatter block of a SKILL.md file, per the open SKILL.md spec at https://agentskills.io.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["name", "description"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Lowercase kebab-case skill identifier. Must not collide with reserved names (see RESERVED_SLUGS)."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "description": "Free-form description. Should include a positive trigger ('use when…') and ideally a negative trigger ('do not use when…'). XML tags are forbidden."
+    },
+    "skill_type": {
+      "type": "string",
+      "enum": ["domain-expert", "specialist", "workflow", "hybrid"],
+      "description": "Skill classification per the open spec."
+    },
+    "domain_focus": {
+      "type": "string",
+      "description": "Optional focus area within the skill's domain."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      },
+      "uniqueItems": true,
+      "description": "Optional kebab-case tags. Duplicates are an error (E010)."
+    },
+    "entities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional entities (files, libraries, services) the skill operates on."
+    },
+    "base_skill": {
+      "type": "string",
+      "description": "Optional parent skill name; for skills that specialise another skill."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.\\-]+)?$",
+      "description": "Semver string (e.g. '1.0.0' or '1.0.0-rc.1')."
+    },
+    "version_notes": {
+      "type": "string",
+      "description": "Free-form notes about this version."
+    },
+    "token_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Approximate token cost of loading the skill. Must be a positive integer."
+    },
+    "tone": {
+      "type": "string",
+      "description": "Optional tone guidance (e.g. 'terse', 'mentor-like')."
+    },
+    "model": {
+      "type": "string",
+      "description": "Optional target model hint."
+    },
+    "references": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional reference files inside the skill folder."
+    }
+  }
+}
