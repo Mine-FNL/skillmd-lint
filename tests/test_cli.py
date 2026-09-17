@@ -119,7 +119,7 @@ def test_cli_version():
     r = _run("--version")
     assert r.returncode == 0
     assert "skillmd-lint" in r.stdout
-    assert "1.1.2" in r.stdout
+    assert "1.2.0" in r.stdout
 
 
 def test_cli_quiet(tmp_path: Path):
