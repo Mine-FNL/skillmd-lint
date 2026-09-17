@@ -1,0 +1,11 @@
+- id: skillmd-lint
+  name: skillmd-lint
+  description: Lint and validate SKILL.md files against the open SKILL.md spec.
+  entry: skillmd-lint
+  language: python
+  language_version: python3
+  types: [markdown]
+  files: '(^|/)SKILL\.md$'
+  args: ["--strict"]
+  minimum_pre_commit_version: "3.0.0"
+  additional_dependencies: ["skillmd-lint==1.1.0"]
