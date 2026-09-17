@@ -531,3 +531,185 @@ class TestRULE_INDEX:
         assert "token_budget" in summaries["W011"]
         assert "Pitfalls" in summaries["W012"]
         assert "duplicate" in summaries["E010"]
+
+
+# ---------------------------------------------------------------------------
+# Coverage targets — every uncovered branch in rules.py
+# ---------------------------------------------------------------------------
+
+
+class TestSplitFrontmatterEdgeCases:
+    """The ``_split_frontmatter`` helper is private; we test it via the
+    public ``lint_text`` API since that's the only way users reach it.
+    """
+
+    def test_unclosed_frontmatter(self):
+        # No closing ``---`` marker — _split_frontmatter returns ({}, text).
+        text = "---\nname: my-skill\ndescription: Use when X. Don't use for Y.\n"
+        r = lint_text(text)
+        # With no body, the rule engine sees no frontmatter → E002 fires.
+        codes = {f.code for f in r.findings}
+        assert "E002" in codes
+
+    def test_yaml_returns_non_dict(self):
+        # YAML root is a list, not a dict. _split_frontmatter returns ({}, body).
+        text = "---\n- one\n- two\n---\n# body\n" + ("line\n" * 25)
+        r = lint_text(text)
+        # No frontmatter dict → E002 (frontmatter missing or invalid).
+        codes = {f.code for f in r.findings}
+        assert "E002" in codes
+
+    def test_split_frontmatter_unclosed_branch(self):
+        """Direct exercise of the ``if end is None`` branch in _split_frontmatter."""
+        from skillmd_lint.rules import _split_frontmatter
+
+        text = "---\nname: my-skill\n"  # no closing fence
+        fm, body = _split_frontmatter(text)
+        assert fm == {}
+        assert body == text
+
+    def test_split_frontmatter_non_dict_branch(self):
+        """Direct exercise of the ``if not isinstance(data, dict)`` branch."""
+        from skillmd_lint.rules import _split_frontmatter
+
+        text = "---\n- one\n- two\n---\nbody"
+        fm, body = _split_frontmatter(text)
+        assert fm == {}
+        assert "body" in body
+
+
+class TestRuleEdgeCases:
+    def test_name_reserved_with_non_string_name(self):
+        # ``name`` is an int, not a string — the ``isinstance`` guard in
+        # ``_rule_name_reserved`` skips it (returns immediately), so E005
+        # does NOT fire even though ``42`` is not in RESERVED_SLUGS.
+        # E003 fires because E003 owns the "name is not a valid string" check.
+        text = "---\nname: 42\ndescription: Use when X. Don't use for Y.\n---\n" + ("line\n" * 25)
+        r = lint_text(text)
+        codes = {f.code for f in r.findings}
+        assert "E003" in codes
+        assert "E005" not in codes
+
+    def test_skill_type_non_string(self):
+        # ``skill_type`` is a list, not a string.
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "skill_type:\n  - domain-expert\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        warnings = {f.code for f in r.warnings}
+        assert "W009" in warnings
+        # Verify the message mentions the actual type.
+        msg = next(f.message for f in r.warnings if f.code == "W009")
+        assert "list" in msg
+
+    def test_tags_not_a_list(self):
+        # ``tags`` is a string, not a list.
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "tags: 'api, rest'\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        warnings = {f.code for f in r.warnings}
+        assert "W013" in warnings
+        msg = next(f.message for f in r.warnings if f.code == "W013")
+        assert "list" in msg
+
+    def test_tags_list_with_non_string_items(self):
+        # ``tags`` is a list containing a non-string element (an int).
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "tags:\n  - api\n  - 42\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        warnings = {f.code for f in r.warnings}
+        assert "W013" in warnings
+
+    def test_tags_with_empty_string(self):
+        # An empty string inside the tags list — should warn.
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "tags:\n  - ''\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        warnings = {f.code for f in r.warnings}
+        assert "W013" in warnings
+
+    def test_tags_unique_ignores_non_strings(self):
+        # E010 only fires on duplicate *strings*; non-strings are silently
+        # skipped (W013 owns the format complaint).
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "tags:\n  - api\n  - 42\n  - 42\n"
+            "---\n" + ("line\n" * 25)
+        )
+        r = lint_text(text)
+        errors = {f.code for f in r.errors}
+        assert "E010" not in errors
+
+    def test_lint_paths_also_warns_for_non_string_tags(self):
+        # Same as above but routed through lint_paths for the additional
+        # coverage of the lint_paths wrapper branches.
+        from skillmd_lint.rules import lint_paths
+
+        text = (
+            "---\n"
+            "name: my-skill\n"
+            "description: Use when X. Don't use for Y.\n"
+            "tags:\n  - 42\n"
+            "---\n" + ("line\n" * 25)
+        )
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+            f.write(text)
+            path = Path(f.name)
+        try:
+            results = lint_paths([path])
+            warnings = {f.code for r in results for f in r.warnings}
+            assert "W013" in warnings
+        finally:
+            path.unlink()
+
+
+class TestFolderDiscoveryBranches:
+    def test_skills_dir_with_non_skill_children(self, tmp_path: Path):
+        """``skills/`` may contain non-skill entries; the loop must skip them.
+
+        This drives the ``child.is_dir() and (child / "SKILL.md").is_file()``
+        False branch in ``lint_folder`` (line 712 -> 711) — the only branch
+        not covered by the existing happy-path test.
+        """
+
+        skills_dir = tmp_path / "skills"
+        skills_dir.mkdir()
+        # Valid skill: should be linted.
+        valid = skills_dir / "valid-skill"
+        valid.mkdir()
+        (valid / "SKILL.md").write_text(VALID, encoding="utf-8")
+        # Non-skill directory (no SKILL.md): should be SKIPPED.
+        empty = skills_dir / "empty-dir"
+        empty.mkdir()
+        # Non-directory entry (a stray file at the root of skills/): should be
+        # SKIPPED.
+        stray = skills_dir / "stray-file.md"
+        stray.write_text("not a skill\n", encoding="utf-8")
+
+        results = lint_folder(tmp_path)
+        # Only the valid skill should produce a LintResult.
+        assert len(results) == 1
+        assert results[0].passed

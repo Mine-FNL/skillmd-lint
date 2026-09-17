@@ -313,3 +313,100 @@ class TestMain:
         assert rc == 1
         captured = capsys.readouterr()
         assert "::error" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# Coverage targets — every uncovered branch in cli._run_schema
+# ---------------------------------------------------------------------------
+
+
+class TestRunSchemaBranches:
+    """The ``_run_schema`` helper in cli.py has several defensive branches
+    (file unreadable, no frontmatter, unclosed fence, bad YAML, non-dict
+    frontmatter). Drive each one explicitly.
+    """
+
+    def test_path_not_looks_like_skill(self, tmp_path):
+        # Path that does NOT end in SKILL.md → not a skill, schema skipped.
+        plain = tmp_path / "README.md"
+        plain.write_text("---\nname: foo\n---\nbody\n", encoding="utf-8")
+        from skillmd_lint.cli import _run_schema
+        from skillmd_lint.rules import LintResult
+
+        r = LintResult(path=str(plain), looks_like_skill=False)
+        out = _run_schema([r])
+        assert out == [r]  # returned unchanged
+
+    def test_file_unreadable(self, tmp_path):
+        """A path that exists but cannot be read as UTF-8 should not crash.
+
+        We simulate this with a directory masquerading as a file — calling
+        ``Path.read_text()`` on it raises ``IsADirectoryError`` (which
+        inherits from ``OSError``).
+        """
+        from skillmd_lint.cli import _run_schema
+        from skillmd_lint.rules import LintResult
+
+        # Point at a directory: read_text will raise OSError.
+        r = LintResult(path=str(tmp_path), looks_like_skill=True)
+        out = _run_schema([r])
+        # Should return the result unchanged (caught by OSError handler).
+        assert out == [r]
+
+    def test_no_frontmatter_marker(self, tmp_path):
+        """File looks like a skill but starts with non-frontmatter content."""
+        from skillmd_lint.cli import _run_schema
+        from skillmd_lint.rules import LintResult
+
+        f = tmp_path / "SKILL.md"
+        f.write_text("just some text, no frontmatter\n" + ("line\n" * 25), encoding="utf-8")
+        r = LintResult(path=str(f), looks_like_skill=True)
+        out = _run_schema([r])
+        assert out == [r]
+
+    def test_unclosed_frontmatter_in_schema_layer(self, tmp_path):
+        from skillmd_lint.cli import _run_schema
+        from skillmd_lint.rules import LintResult
+
+        f = tmp_path / "SKILL.md"
+        f.write_text("---\nname: foo\n", encoding="utf-8")
+        r = LintResult(path=str(f), looks_like_skill=True)
+        out = _run_schema([r])
+        assert out == [r]
+
+    def test_invalid_yaml(self, tmp_path):
+        from skillmd_lint.cli import _run_schema
+        from skillmd_lint.rules import LintResult
+
+        f = tmp_path / "SKILL.md"
+        f.write_text("---\nname: [unclosed\n---\nbody\n" + ("line\n" * 25), encoding="utf-8")
+        r = LintResult(path=str(f), looks_like_skill=True)
+        out = _run_schema([r])
+        assert out == [r]
+
+    def test_non_dict_yaml(self, tmp_path):
+        from skillmd_lint.cli import _run_schema
+        from skillmd_lint.rules import LintResult
+
+        f = tmp_path / "SKILL.md"
+        f.write_text("---\n- one\n- two\n---\nbody\n" + ("line\n" * 25), encoding="utf-8")
+        r = LintResult(path=str(f), looks_like_skill=True)
+        out = _run_schema([r])
+        assert out == [r]
+
+
+def test___main___subprocess(tmp_path):
+    """``python -m skillmd_lint`` should exit cleanly on a valid skill."""
+    import subprocess
+    import sys
+
+    f = tmp_path / "SKILL.md"
+    f.write_text(VALID_DOC, encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "skillmd_lint", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        cwd="/tmp/skillmd-lint-init",
+    )
+    assert result.returncode == 0

@@ -230,12 +230,6 @@ def _has_xml_tags(s: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _rule_file_exists(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
-    # ``file_exists`` is checked at the file level (we wouldn't be here if
-    # the file didn't exist), so this rule is a placeholder.
-    return ()
-
-
 def _rule_frontmatter(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
     if not fm:
         yield LintFinding(
@@ -647,14 +641,18 @@ def lint_text(text: str, path: str | None = None) -> LintResult:
     result = LintResult(path=path or "<text>", looks_like_skill=bool(fm))
     for rule in _RULES:
         for finding in rule(path, fm, body):
-            if finding.path is None:
-                finding = LintFinding(
+            # Findings from rules never carry a path; we attach the
+            # file/folder path the linter was invoked with. (``finding.path
+            # or path`` keeps the contract alive in case a future rule sets
+            # its own path on a per-finding basis.)
+            result.findings.append(
+                LintFinding(
                     code=finding.code,
                     severity=finding.severity,
                     message=finding.message,
-                    path=path,
+                    path=finding.path or path,
                 )
-            result.findings.append(finding)
+            )
     return result
 
 
