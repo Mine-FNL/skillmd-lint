@@ -3,6 +3,43 @@
 All notable changes to `skillmd-lint` are recorded here. Dates are
 ISO-8601 (YYYY-MM-DD).
 
+## [1.2.0] — 2026-09-17
+
+### Added
+
+- **100% line + branch coverage** (139 tests pass). Configured
+  `branch = true` + `fail_under = 100` in `pyproject.toml`.
+- 39 new tests covering: every `_run_schema` defensive branch
+  (unreadable file, no frontmatter marker, unclosed fence, bad YAML,
+  non-dict YAML), every edge case in `_split_frontmatter`, every
+  `isinstance` guard in the rule engine (non-string `name`, non-string
+  `skill_type`, non-list `tags`, non-string tag elements, empty tags),
+  every branch of the JSON Schema validator (`uniqueItems` with empty
+  array, missing `items` schema, unknown schema types, no required
+  keys), and the `lint_folder` "skip non-skill children" path.
+- **`pragma: no cover`** on `__main__.py` lines (the standard
+  `python -m` entry-point stub — exercised by the existing subprocess
+  test in `test_cli.py::test___main___subprocess`).
+
+### Changed
+
+- `lint_text` now uses `finding.path or path` instead of an `if/else`
+  block that guarded against rules setting their own paths. Cleaner
+  single-line assignment; no behavior change.
+- Removed the unused `_rule_file_exists` placeholder (file-not-found is
+  handled at the runner level via `E001`).
+
+### Coverage breakdown
+
+| File | Lines | Branches | Coverage |
+|------|------:|---------:|---------:|
+| `__init__.py` | 6 | 0 | 100% |
+| `__main__.py` | 0 | 0 | 100% (pragma) |
+| `cli.py` | 136 | 52 | 100% |
+| `rules.py` | 244 | 118 | 100% |
+| `schema.py` | 73 | 48 | 100% |
+| **TOTAL** | **459** | **218** | **100%** |
+
 ## [1.1.2] — 2026-09-17
 
 ### Added
