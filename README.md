@@ -8,7 +8,8 @@ CI-friendly. Offline. No API key. Schema-validated.
 [![CI](https://github.com/Mine-FNL/skillmd-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/Mine-FNL/skillmd-lint/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![v1.1](https://img.shields.io/badge/version-1.1.2-blueviolet.svg)](CHANGELOG.md)
+[![v1.2](https://img.shields.io/badge/version-1.2.0-blueviolet.svg)](CHANGELOG.md)
+[![Coverage 100%](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#)
 [![Schema](https://img.shields.io/badge/json--schema-2020--12-blue)](skillmd_frontmatter.schema.json)
 
 </div>
@@ -35,9 +36,13 @@ But the spec is easy to get wrong:
   so skills don't over-fire
 - `skill_type` typos or `version` strings that aren't valid semver
 
-`skillmd-lint` checks every one of these, plus a published
-[JSON Schema](skillmd_frontmatter.schema.json), and exits non-zero when
+`skillmd-lint` checks every one of these — plus a published
+[JSON Schema](skillmd_frontmatter.schema.json) — and exits non-zero when
 something is wrong, so you can wire it into pre-commit or CI in 30 seconds.
+
+**22 rules** (10 errors + 13 warnings, 1 of which only fires in folder mode),
+**139 tests** at **100% line + branch coverage**, and **zero runtime
+dependencies** beyond PyYAML.
 
 ## Install
 
@@ -188,7 +193,7 @@ Or, equivalently, with the Python CLI:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install skillmd-lint==1.1.0
+      - run: pip install skillmd-lint==1.2.0
       - run: skillmd-lint --strict skills/
 ```
 
@@ -199,7 +204,7 @@ Or, equivalently, with the Python CLI:
 ```yaml
 repos:
   - repo: https://github.com/Mine-FNL/skillmd-lint
-    rev: v1.1.0
+    rev: v1.2.0
     hooks:
       - id: skillmd-lint
         args: ["--strict"]
@@ -256,3 +261,22 @@ test matrix.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Contributing
+
+Bug reports, feature requests, and pull requests are welcome. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for the workflow, the rule-engine
+contribution guide, and the acceptance bar. By participating, you agree
+to abide by the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+## Security
+
+Found a security vulnerability? Please disclose privately — see
+[`SECURITY.md`](SECURITY.md) for the reporting channel and supported
+versions.
+
+## Maintainers
+
+Built and maintained by [Mine-FNL](https://github.com/Mine-FNL). If
+this project is useful to you, consider starring the repo or
+contributing a rule — see [`CONTRIBUTING.md`](CONTRIBUTING.md).

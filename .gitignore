@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 *.egg-info/
 .eggs/
 build/
@@ -13,13 +14,32 @@ dist/
 .coverage.*
 htmlcov/
 coverage.xml
+.cache/
 
 # Virtualenvs
 .venv/
 venv/
 env/
 
-# Editor
+# Editor / OS
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Temp / scratch
+*.tmp
+*.bak
+*.orig
+.rej
+
+# Local config
+.env
+.env.local
+*.local.yaml
+*.local.yml
+
+# OS generated
+.python-version  # we use pyproject.toml requires-python instead
