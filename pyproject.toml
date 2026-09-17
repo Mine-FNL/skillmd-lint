@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "skillmd-lint"
+version = "1.0.0"
+description = "Lint and validate SKILL.md files against the open SKILL.md spec. CI-friendly, offline, no API key."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Mine-FNL" }]
+keywords = [
+    "skill-md",
+    "lint",
+    "validator",
+    "claude",
+    "anthropic",
+    "openai",
+    "agent-skills",
+    "agentskills",
+    "ci",
+    "pre-commit",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Mine-FNL/skillmd-lint"
+Issues = "https://github.com/Mine-FNL/skillmd-lint/issues"
+"Source" = "https://github.com/Mine-FNL/skillmd-lint"
+
+[project.scripts]
+skillmd-lint = "skillmd_lint.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["skillmd_lint*"]
+exclude = ["tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "PTH", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+
+[tool.coverage.run]
+source = ["skillmd_lint"]
