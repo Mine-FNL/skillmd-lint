@@ -3,6 +3,52 @@
 All notable changes to `skillmd-lint` are recorded here. Dates are
 ISO-8601 (YYYY-MM-DD).
 
+## [1.3.0] — 2026-09-19
+
+### Added
+
+- **`--fix` flag**: applies 6 safe mechanical fixes in-place:
+  - **W008** frontmatter typo rename (e.g. `desription` → `description`)
+  - **E010** deduplicate tag list (preserving first occurrence)
+  - **W013** normalise tags to lowercase kebab-case
+  - **W010** strip `v`/`V` prefix from version when otherwise valid semver
+  - **W011** coerce string `token_budget` to positive int
+- **`--unsafe-fix` flag** (gated on `--fix`): adds 2 riskier fixes:
+  - **E004** coerce `name` to lowercase kebab-case (handles camelCase boundaries)
+  - **W009** alias-map common `skill_type` values (`code` → `specialist`, etc.)
+- **`--schema-export PATH` flag**: writes the published JSON Schema for
+  SKILL.md frontmatter to PATH and exits. Useful for editors, IDEs, and
+  other validators that want to consume the spec contract without
+  depending on Python.
+- **`--migrate` flag**: converts CLAUDE.md / AGENTS.md / .cursorrules
+  files to SKILL.md with best-effort name + description extraction.
+  Supports `--migrate-out PATH` and `--migrate-format` overrides.
+- **`skillmd_lint.migrate` Python API**: `migrate_file()`, `migrate_path()`,
+  `detect_format()` for programmatic conversion.
+- 5 new sample skills under `examples/`:
+  - `security-review-checklist/` — STRIDE-driven PR security audit
+  - `sql-query-optimization/` — diagnose-then-fix loop with anti-patterns
+  - `api-error-response-format/` — canonical four-field error envelope
+  - `python-package-release/` — 12-step release checklist with gates
+  - `incident-postmortem/` — blameless template with 5-phase structure
+
+### Changed
+
+- `cli.py` now imports the schema only when `--schema-export` is
+  requested, keeping the import path lighter for the lint code path.
+- `_apply_fixes_to_paths` is file-scoped; folders in the path list are
+  skipped (lint still walks them, but fixes only apply to explicit
+  file paths).
+- Test count: 254 (up from 139). Coverage: 100% lines + branches across
+  all new modules (`fix.py`, `migrate.py`) and existing ones.
+
+### Notes
+
+- The `pragma: no cover` markers on unreachable defensive branches are
+  intentional. The branch coverage gate requires explicit annotation
+  for paths the rule engine gates upstream; we keep the defensive code
+  for runtime safety rather than deleting it.
+
 ## [1.2.0] — 2026-09-17
 
 ### Added
