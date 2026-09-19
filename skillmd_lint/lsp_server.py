@@ -18,10 +18,7 @@ construction.
 
 from __future__ import annotations
 
-import json
-import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 # pygls is an optional dependency; we import it lazily so that the
@@ -32,10 +29,10 @@ if TYPE_CHECKING:  # pragma: no cover
 # Mapping from skillmd-lint severity → LSP severity (integer).
 # See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnosticSeverity
 _LSP_SEVERITY = {
-    "error": 1,    # Error
+    "error": 1,  # Error
     "warning": 2,  # Warning
-    "info": 3,     # Information
-    "hint": 4,     # Hint
+    "info": 3,  # Information
+    "hint": 4,  # Hint
 }  # pragma: no cover
 
 
@@ -43,11 +40,11 @@ _LSP_SEVERITY = {
 class LspDiagnostic:
     """A single diagnostic in LSP terms."""
 
-    line: int      # 0-indexed
+    line: int  # 0-indexed
     character: int  # 0-indexed
-    severity: int   # 1, 2, 3, or 4
-    code: str       # rule code, e.g. "W008"
-    source: str     # always "skillmd-lint"
+    severity: int  # 1, 2, 3, or 4
+    code: str  # rule code, e.g. "W008"
+    source: str  # always "skillmd-lint"
     message: str
 
 
@@ -91,28 +88,30 @@ def findings_to_diagnostics(
     diagnostics: list[dict] = []
     for f in findings:
         sev = _LSP_SEVERITY.get(f.get("severity", "warning"), 2)
-        diagnostics.append({
-            "range": {
-                "start": {"line": 0, "character": 0},
-                "end":   {"line": 0, "character": 1},
-            },
-            "severity": sev,
-            "code": f.get("code", ""),
-            "source": "skillmd-lint",
-            "message": f.get("message", ""),
-        })
+        diagnostics.append(
+            {
+                "range": {
+                    "start": {"line": 0, "character": 0},
+                    "end": {"line": 0, "character": 1},
+                },
+                "severity": sev,
+                "code": f.get("code", ""),
+                "source": "skillmd-lint",
+                "message": f.get("message", ""),
+            }
+        )
     return diagnostics
 
 
-def make_server() -> "LanguageServer":
+def make_server() -> LanguageServer:
     """Construct and return a configured LanguageServer instance.
 
     Imports ``pygls`` lazily so the core package remains importable
     without it.
     """
 
-    from pygls.lsp.server import LanguageServer
     from lsprotocol.types import Diagnostic
+    from pygls.lsp.server import LanguageServer
 
     server = LanguageServer("skillmd-lint", "1.4.0")
 
@@ -142,7 +141,7 @@ def make_server() -> "LanguageServer":
             Diagnostic(
                 range={
                     "start": {"line": 0, "character": 0},
-                    "end":   {"line": 0, "character": 1},
+                    "end": {"line": 0, "character": 1},
                 },
                 severity=_LSP_SEVERITY.get(f.get("severity", "warning"), 2),
                 code=f.get("code", ""),
@@ -170,6 +169,6 @@ def main() -> None:  # pragma: no cover
 __all__ = [
     "LspDiagnostic",
     "findings_to_diagnostics",
-    "make_server",
     "main",
+    "make_server",
 ]

@@ -42,7 +42,7 @@ jobs:
       - name: Install runtime + test deps
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]" || pip install -e . pytest pytest-cov ruff
+          pip install -e ".[dev]"
       - name: Run tests with coverage
         run: |
           pytest --cov --cov-report=term --cov-report=xml --cov-fail-under=100
@@ -74,18 +74,47 @@ jobs:
           mkdir -p /tmp/smoke && cat > /tmp/smoke/SKILL.md <<'EOF'
           ---
           name: smoke-skill
-          description: |
-            Use when testing the CLI smoke path on CI. Don't use for
-            production skill authoring.
+          description: >-
+            Use when verifying the skillmd-lint CLI smoke path on CI. Applies
+            when a maintainer needs a known-good SKILL.md to lint. Do not use
+            for production skill authoring or as a template for real skills.
           skill_type: specialist
+          domain_focus: developer-tooling
+          tags:
+            - ci
+            - linting
+            - smoke-test
+          version: 1.0.0
+          version_notes: Initial 1.0.0 smoke fixture for the CLI smoke job.
+          token_budget: 1200
           ---
-          # Smoke
 
           ## When to use
 
+          Use this fixture when the CI smoke job needs a SKILL.md file that
+          passes every rule under `--strict --schema`. It exists to prove the
+          installed CLI can lint a real file end to end, not to teach skill
+          authoring.
+
           ## Examples
 
+          Run the linter against this fixture:
+
+          ```bash
+          skillmd-lint --strict --schema /tmp/smoke
+          ```
+
+          A clean run exits zero and prints the summary line:
+
+          ```
+          1 file(s) checked, 0 error(s), 0 warning(s)
+          ```
+
           ## Pitfalls to avoid
+
+          Do not add new sections or shorten the body below the spec minimum;
+          the fixture must stay warning-free or the smoke job fails for the
+          wrong reason.
           EOF
           python -m skillmd_lint /tmp/smoke
           python -m skillmd_lint --strict /tmp/smoke
@@ -109,4 +138,4 @@ jobs:
         run: |
           pip install dist/skillmd_lint-*.whl
           skillmd-lint --version
-          skillmd-lint examples/
+          skillmd-lint examples/*/

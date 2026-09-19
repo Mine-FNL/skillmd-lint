@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from skillmd_lint import migrate
-
 
 # ---------------------------------------------------------------------------
 # Format detection
@@ -51,7 +48,7 @@ def test_parse_claude_md_with_heading():
 
 def test_parse_claude_md_without_heading():
     text = "Just some markdown instructions.\n\nNo top-level heading here.\n"
-    fm, body, warnings = migrate._parse_claude_md(text)
+    fm, body, _warnings = migrate._parse_claude_md(text)
     # No heading → no name from heading; description still set from first paragraph
     assert "name" not in fm
     assert "Use when" in fm["description"]
@@ -61,21 +58,21 @@ def test_parse_claude_md_without_heading():
 def test_parse_claude_md_truncates_long_description():
     long_para = "x" * 2000
     text = f"# Big skill\n\n{long_para}\n"
-    fm, body, warnings = migrate._parse_claude_md(text)
+    fm, _body, warnings = migrate._parse_claude_md(text)
     assert len(fm["description"]) <= 1024
     assert any("truncated" in w for w in warnings)
 
 
 def test_parse_claude_md_skips_code_blocks():
     text = "# Code skill\n\n```python\nprint('hello')\n```\n\nThis is a real paragraph.\n"
-    fm, body, warnings = migrate._parse_claude_md(text)
+    fm, _body, _warnings = migrate._parse_claude_md(text)
     # The code block is skipped; the real paragraph becomes the description
     assert "real paragraph" in fm["description"]
 
 
 def test_parse_claude_md_default_skill_type():
     text = "# Helper\n\nDescription.\n"
-    fm, body, warnings = migrate._parse_claude_md(text)
+    fm, _body, _warnings = migrate._parse_claude_md(text)
     assert fm["skill_type"] == "domain-expert"
 
 
@@ -86,21 +83,21 @@ def test_parse_claude_md_default_skill_type():
 
 def test_parse_agents_md_strips_prefix():
     text = "# Agents: Build Helpers\n\nThis is the agents file for build tools.\n"
-    fm, body, warnings = migrate._parse_agents_md(text)
+    fm, _body, warnings = migrate._parse_agents_md(text)
     assert fm["name"] == "build-helpers"
     assert warnings == []
 
 
 def test_parse_agents_md_no_heading_uses_default():
     text = "Just markdown with no heading.\n"
-    fm, body, warnings = migrate._parse_agents_md(text)
+    fm, _body, warnings = migrate._parse_agents_md(text)
     assert fm["name"] == "agents-md-skill"
     assert any("default" in w for w in warnings)
 
 
 def test_parse_agents_md_handles_agent_prefix():
     text = "# Agent: Test Runner\n\nRuns tests.\n"
-    fm, body, warnings = migrate._parse_agents_md(text)
+    fm, _body, _warnings = migrate._parse_agents_md(text)
     assert fm["name"] == "test-runner"
 
 
@@ -111,7 +108,7 @@ def test_parse_agents_md_handles_agent_prefix():
 
 def test_parse_cursorrules_basic():
     text = "Always use type hints.\nPrefer f-strings.\n"
-    fm, body, warnings = migrate._parse_cursorrules(text)
+    fm, body, _warnings = migrate._parse_cursorrules(text)
     assert "name" in fm
     assert "type hints" in fm["description"]
     assert "## When to use" in body
@@ -121,14 +118,14 @@ def test_parse_cursorrules_basic():
 
 def test_parse_cursorrules_skips_comments():
     text = "# This is a comment\nUse pathlib.\nPrefer dataclasses.\n"
-    fm, body, warnings = migrate._parse_cursorrules(text)
+    fm, _body, _warnings = migrate._parse_cursorrules(text)
     # Comment line is skipped; real rules become description
     assert "pathlib" in fm["description"]
 
 
 def test_parse_cursorrules_preserves_body():
     text = "Rule one.\nRule two.\nRule three.\n"
-    fm, body, warnings = migrate._parse_cursorrules(text)
+    _fm, body, _warnings = migrate._parse_cursorrules(text)
     assert "Rule one" in body
     assert "Rule two" in body
 
@@ -369,7 +366,7 @@ def test_migrate_result_includes_warnings(capsys, tmp_path):
 def test_parse_claude_md_no_paragraphs():
     """Code-only input with no real paragraphs falls through."""
     text = "# Helper\n\n```\ncode block\n```\n"
-    fm, body, warnings = migrate._parse_claude_md(text)
+    fm, _body, _warnings = migrate._parse_claude_md(text)
     # No real paragraph, so no description
     assert "description" not in fm or "Use when" in fm.get("description", "")
 
@@ -384,14 +381,14 @@ def test_parse_agents_md_strips_multiple_prefixes():
 def test_parse_agents_md_skips_code_block_first_paragraph():
     """A leading code block is skipped; the next paragraph becomes description."""
     text = "# Agents: Tool\n\n```\ncode\n```\n\nThe real description.\n"
-    fm, body, warnings = migrate._parse_agents_md(text)
+    fm, _body, _warnings = migrate._parse_agents_md(text)
     assert "real description" in fm["description"]
 
 
 def test_parse_agents_md_no_real_paragraphs():
     """Body with no real paragraphs (only headings) skips the description loop."""
     text = "# Agents: Header\n\n## Subheading only\n"
-    fm, body, warnings = migrate._parse_agents_md(text)
+    fm, _body, _warnings = migrate._parse_agents_md(text)
     # No description was set (the loop found nothing to use)
     # but defaults are applied
     assert fm["version"] == "0.1.0"
@@ -400,7 +397,7 @@ def test_parse_agents_md_no_real_paragraphs():
 def test_parse_cursorrules_no_lines_uses_default_desc():
     """Empty/whitespace-only input still gets a description."""
     text = "\n\n   \n\n"
-    fm, body, warnings = migrate._parse_cursorrules(text)
+    fm, _body, _warnings = migrate._parse_cursorrules(text)
     assert "description" in fm
     # No body lines, falls back to default
 
@@ -409,7 +406,7 @@ def test_parse_cursorrules_long_first_lines_truncated():
     """Long description gets truncated to 1024 chars."""
     long_lines = " ".join(["x" * 100 for _ in range(20)])
     text = f"# Cursorrules\n\n{long_lines}\n"
-    fm, body, warnings = migrate._parse_cursorrules(text)
+    fm, _body, warnings = migrate._parse_cursorrules(text)
     assert any("truncated" in w for w in warnings)
     assert len(fm["description"]) <= 1024
 
@@ -422,7 +419,7 @@ def test_parse_cursorrules_already_has_sections():
         "## Examples\nExample.\n\n"
         "## Pitfalls to avoid\nPitfall.\n"
     )
-    fm, body, warnings = migrate._parse_cursorrules(text)
+    _fm, body, _warnings = migrate._parse_cursorrules(text)
     # Should not duplicate the sections
     assert body.count("## When to use") == 1
     assert body.count("## Examples") == 1
@@ -431,13 +428,11 @@ def test_parse_cursorrules_already_has_sections():
 
 def test_migrate_file_write_error(tmp_path, monkeypatch):
     """When write fails, return a MigrationResult with success=False."""
-    from pathlib import Path
 
     src = tmp_path / "CLAUDE.md"
     src.write_text("# Helper\n\nDesc.\n")
 
     # Patch write_text to raise OSError
-    original_write = Path.write_text
 
     def _raise(self, *args, **kwargs):
         raise OSError("simulated write failure")

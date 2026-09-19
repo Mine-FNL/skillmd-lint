@@ -21,9 +21,7 @@ def _skill(fm: str, body: str = "\n## When to use\n\n## Examples\n\n## Pitfalls 
 
 def test_w008_both_typo_and_canonical_present():
     """If both a typo and canonical key exist, canonical wins; typo is dropped."""
-    text = _skill(
-        "name: helper\ndesription: typo'd value\ndescription: canonical value"
-    )
+    text = _skill("name: helper\ndesription: typo'd value\ndescription: canonical value")
     result = lint_text(text, "x")
     new_text, applied = fix.apply_fixes(text, result)
     assert any(a.code == "W008" for a in applied)
@@ -46,11 +44,9 @@ def test_w008_no_findings_yields_no_change():
 
 def test_e010_non_string_tags_skipped():
     """Non-string entries are preserved; only string duplicates are removed."""
-    text = _skill(
-        "name: helper\ndescription: Use when X.\ntags:\n  - python\n  - 42\n  - python"
-    )
+    text = _skill("name: helper\ndescription: Use when X.\ntags:\n  - python\n  - 42\n  - python")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     if any(f.code == "E010" for f in result.findings):
         assert any(a.code == "E010" for a in applied)
 
@@ -58,38 +54,32 @@ def test_e010_non_string_tags_skipped():
 def test_e010_tags_not_a_list_is_noop():
     text = _skill("name: helper\ndescription: Use when X.\ntags: python")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     # Tags is a string not a list, so rule doesn't fire, fix doesn't apply
     assert not any(a.code == "E010" for a in applied)
 
 
 def test_w013_non_string_tags_skipped():
-    text = _skill(
-        "name: helper\ndescription: Use when X.\ntags:\n  - python\n  - 42"
-    )
+    text = _skill("name: helper\ndescription: Use when X.\ntags:\n  - python\n  - 42")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    new_text, _applied = fix.apply_fixes(text, result)
     # Non-string tag shouldn't be normalised
     assert "42" in new_text
 
 
 def test_w013_normalises_underscore_and_consecutive_hyphens():
-    text = _skill(
-        "name: helper\ndescription: Use when X.\ntags:\n  - foo___bar\n  - baz--qux"
-    )
+    text = _skill("name: helper\ndescription: Use when X.\ntags:\n  - foo___bar\n  - baz--qux")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    new_text, _applied = fix.apply_fixes(text, result)
     if any(f.code == "W013" for f in result.findings):
         assert "foo-bar" in new_text
         assert "baz-qux" in new_text
 
 
 def test_w013_strips_leading_trailing_hyphens():
-    text = _skill(
-        "name: helper\ndescription: Use when X.\ntags:\n  - '---foo---'"
-    )
+    text = _skill("name: helper\ndescription: Use when X.\ntags:\n  - '---foo---'")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    new_text, _applied = fix.apply_fixes(text, result)
     if any(f.code == "W013" for f in result.findings):
         assert "foo" in new_text
         # No leading hyphens
@@ -124,7 +114,7 @@ def test_e004_uppercase_run_then_lowercase():
 def test_e004_non_string_name_is_noop():
     text = _skill("name: 42\ndescription: Use when X.")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result, unsafe=True)
+    _new_text, applied = fix.apply_fixes(text, result, unsafe=True)
     # If the rule fired, fix should not crash on a non-string
     if any(f.code == "E004" for f in result.findings):
         assert not any(a.code == "E004" for a in applied)
@@ -133,7 +123,7 @@ def test_e004_non_string_name_is_noop():
 def test_e004_canonical_unchanged_unsafe():
     text = _skill("name: my-skill\ndescription: Use when X.")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result, unsafe=True)
+    _new_text, applied = fix.apply_fixes(text, result, unsafe=True)
     assert not any(a.code == "E004" for a in applied)
 
 
@@ -146,14 +136,14 @@ def test_w010_non_string_version_is_noop():
     """version: 1 is an int, not str — W010 rule won't fire."""
     text = _skill("name: helper\ndescription: Use when X.\nversion: 1")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     assert not any(a.code == "W010" for a in applied)
 
 
 def test_w010_no_prefix_no_change():
     text = _skill("name: helper\ndescription: Use when X.\nversion: 1.2.3")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     assert not any(a.code == "W010" for a in applied)
 
 
@@ -161,7 +151,7 @@ def test_w010_invalid_after_strip_is_noop():
     """If stripping 'v' leaves invalid semver, don't apply."""
     text = _skill("name: helper\ndescription: Use when X.\nversion: vfoo")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     # vfoo → foo (still invalid). Don't apply.
     assert not any(a.code == "W010" for a in applied)
 
@@ -174,22 +164,22 @@ def test_w010_invalid_after_strip_is_noop():
 def test_w011_already_int_no_change():
     text = _skill("name: helper\ndescription: Use when X.\ntoken_budget: 1500")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     assert not any(a.code == "W011" for a in applied)
 
 
 def test_w011_non_numeric_string_no_change():
     text = _skill("name: helper\ndescription: Use when X.\ntoken_budget: many")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     assert not any(a.code == "W011" for a in applied)
 
 
 def test_w011_zero_string_no_change():
     """0 is not positive, so don't coerce."""
-    text = _skill("name: helper\ndescription: Use when X.\ntoken_budget: \"0\"")
+    text = _skill('name: helper\ndescription: Use when X.\ntoken_budget: "0"')
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     assert not any(a.code == "W011" for a in applied)
 
 
@@ -199,11 +189,9 @@ def test_w011_zero_string_no_change():
 
 
 def test_w009_valid_skill_type_no_change():
-    text = _skill(
-        "name: helper\ndescription: Use when X.\nskill_type: domain-expert"
-    )
+    text = _skill("name: helper\ndescription: Use when X.\nskill_type: domain-expert")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result, unsafe=True)
+    _new_text, applied = fix.apply_fixes(text, result, unsafe=True)
     assert not any(a.code == "W009" for a in applied)
 
 
@@ -211,7 +199,7 @@ def test_w009_non_string_skill_type_no_crash():
     """skill_type: 42 (int) — W009 rule won't fire on non-string."""
     text = _skill("name: helper\ndescription: Use when X.\nskill_type: 42")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result, unsafe=True)
+    _new_text, applied = fix.apply_fixes(text, result, unsafe=True)
     assert not any(a.code == "W009" for a in applied)
 
 
@@ -222,15 +210,10 @@ def test_w009_non_string_skill_type_no_crash():
 
 def test_multiple_safe_fixes_in_one_pass():
     text = _skill(
-        "name: helper\n"
-        "desription: Use when X.\n"
-        "version: v1.0.0\n"
-        "tags:\n"
-        "  - python\n"
-        "  - python"
+        "name: helper\ndesription: Use when X.\nversion: v1.0.0\ntags:\n  - python\n  - python"
     )
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     codes = {a.code for a in applied}
     # W008, E010, W010 may all fire
     assert "W008" in codes
@@ -246,14 +229,14 @@ def test_multiple_safe_fixes_in_one_pass():
 def test_split_no_frontmatter_returns_none():
     text = "## Just a heading\n\nSome markdown."
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     assert applied == []
 
 
 def test_split_unclosed_frontmatter_returns_none():
     text = "---\nname: helper\ndescription: never closes"
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     assert applied == []
 
 
@@ -261,7 +244,7 @@ def test_split_non_dict_frontmatter_returns_none():
     """Frontmatter that parses to a non-dict (e.g. just a string) is rejected."""
     text = "---\njust a string\n---\nbody"
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     assert applied == []
 
 

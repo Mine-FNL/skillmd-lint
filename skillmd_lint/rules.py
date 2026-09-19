@@ -598,8 +598,7 @@ def _rule_version_type(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
             code="E011",
             severity=LintSeverity.ERROR,
             message=(
-                f"`version` must be a string with quotes around it "
-                f"(got {type(v).__name__}: {v!r})"
+                f"`version` must be a string with quotes around it (got {type(v).__name__}: {v!r})"
             ),
         )
 
@@ -613,7 +612,6 @@ def _rule_frontmatter_indentation(path: str, fm: dict, body: str) -> Iterable[Li
     hits a stricter parser downstream.
     """
 
-    stripped = body
     # Re-derive the raw frontmatter to inspect indentation. We can
     # check the original text via the path argument when linting
     # from a file; for in-text mode, this is a best-effort fallback.
@@ -643,10 +641,7 @@ def _rule_frontmatter_indentation(path: str, fm: dict, body: str) -> Iterable[Li
             yield LintFinding(
                 code="W014",
                 severity=LintSeverity.WARNING,
-                message=(
-                    f"frontmatter line {i} uses tab indentation; YAML "
-                    f"requires spaces"
-                ),
+                message=(f"frontmatter line {i} uses tab indentation; YAML requires spaces"),
             )
             return  # report once
 
@@ -704,8 +699,7 @@ def _rule_body_html_tags(path: str, fm: dict, body: str) -> Iterable[LintFinding
             code="W016",
             severity=LintSeverity.WARNING,
             message=(
-                "body contains raw HTML tags; prefer Markdown equivalents "
-                "(`**bold**`, `*italic*`)"
+                "body contains raw HTML tags; prefer Markdown equivalents (`**bold**`, `*italic*`)"
             ),
         )
 
@@ -800,10 +794,7 @@ def _rule_version_consistency(path: str, fm: dict, body: str) -> Iterable[LintFi
     yield LintFinding(
         code="W020",
         severity=LintSeverity.WARNING,
-        message=(
-            f"`version_notes` does not mention version {version!r} — "
-            f"is the changelog stale?"
-        ),
+        message=(f"`version_notes` does not mention version {version!r} — is the changelog stale?"),
     )
 
 
@@ -853,9 +844,8 @@ def _maybe_other_skills(name: str, p: Path) -> bool:
             return False
         try:
             for child in parent.iterdir():
-                if child.is_dir() and child.name == name:
-                    if (child / "SKILL.md").is_file():
-                        return True
+                if child.is_dir() and child.name == name and (child / "SKILL.md").is_file():
+                    return True
         except OSError:  # pragma: no cover
             return False
         parent = parent.parent

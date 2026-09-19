@@ -156,8 +156,10 @@ for the SKILL.md frontmatter block. It is bundled into the wheel as
 ```python
 from skillmd_lint import get_schema, validate_frontmatter
 
-print(get_schema()["properties"]["name"])           # → { "type": "string", ... }
-print(validate_frontmatter({"name": "Bad"}))        # → ['$.description: missing required key 'description'']
+print(get_schema()["properties"]["name"])  # → { "type": "string", ... }
+print(
+    validate_frontmatter({"name": "Bad"})
+)  # → ['$.description: missing required key 'description'']
 ```
 
 The same schema is exposed on the CLI via `--schema`:

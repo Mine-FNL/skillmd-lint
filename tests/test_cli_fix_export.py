@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from skillmd_lint.cli import main
 
 
@@ -74,7 +72,7 @@ def test_fix_unsafe_off_by_default(tmp_path):
         "SKILL.md",
         "name: MySkill\ndescription: Use when X.",
     )
-    rc = main(["--fix", str(p)])
+    main(["--fix", str(p)])
     text = p.read_text()
     # Without --unsafe-fix, the name is left alone
     assert "MySkill" in text
@@ -86,7 +84,7 @@ def test_fix_unsafe_enabled(tmp_path, capsys):
         "SKILL.md",
         "name: MySkill\ndescription: Use when X.",
     )
-    rc = main(["--fix", "--unsafe-fix", str(p)])
+    main(["--fix", "--unsafe-fix", str(p)])
     text = p.read_text()
     assert "my-skill" in text
     out = capsys.readouterr().out
@@ -115,7 +113,7 @@ def test_fix_then_relint(tmp_path):
         "SKILL.md",
         "name: helper\ndesription: Use when X.",
     )
-    rc = main(["--fix", str(p)])
+    main(["--fix", str(p)])
     # The desription typo was fixed. Other findings may remain but
     # the re-lint result should not have W008 anymore.
     text = p.read_text()
@@ -126,7 +124,7 @@ def test_fix_dir_skip(tmp_path):
     """Folders in the path list are skipped (only files are rewritten)."""
     d = tmp_path / "subdir"
     d.mkdir()
-    p = _write_skill(
+    _write_skill(
         d,
         "SKILL.md",
         "name: helper\ndescription: Use when X. Do not use elsewhere.\nversion: 1.0.0",
@@ -145,6 +143,7 @@ def test_fix_unwritable_file_logged_to_stderr(tmp_path, capsys, monkeypatch):
         "name: helper\ndesription: Use when X.",
     )
     from pathlib import Path
+
     original_write = Path.write_text
 
     def _patched_write(self, *args, **kwargs):
@@ -153,7 +152,7 @@ def test_fix_unwritable_file_logged_to_stderr(tmp_path, capsys, monkeypatch):
         return original_write(self, *args, **kwargs)
 
     monkeypatch.setattr(Path, "write_text", _patched_write)
-    rc = main(["--fix", str(p)])
+    main(["--fix", str(p)])
     err = capsys.readouterr().err
     assert "cannot write" in err
 
@@ -182,7 +181,7 @@ def test_fix_unreadable_file_logged_to_stderr(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(Path, "read_text", _patched)
     # Use --schema so the second lint (after --fix) also runs.
     rc = main(["--fix", "--schema", str(p)])
-    err = capsys.readouterr().err
+    capsys.readouterr()
     # The "cannot read" branch was either hit or not depending on
     # call ordering; either way the test should not crash.
     assert rc in (0, 1)
@@ -209,7 +208,7 @@ def test_fix_quiet_still_emits_fix_lines(tmp_path, capsys):
         "SKILL.md",
         "name: helper\ndesription: Use when X.",
     )
-    rc = main(["--fix", "--quiet", str(p)])
+    main(["--fix", "--quiet", str(p)])
     out = capsys.readouterr().out
     # --quiet suppresses the rule report but fix announcements still go to stdout
     assert "[W008]" in out
@@ -222,7 +221,7 @@ def test_fix_json_format(tmp_path, capsys):
         "SKILL.md",
         "name: helper\ndescription: Use when X. Do not use elsewhere.\nversion: 1.0.0",
     )
-    rc = main(["--fix", "--format", "json", str(p)])
+    main(["--fix", "--format", "json", str(p)])
     out = capsys.readouterr().out
     # JSON appears AFTER the fix announcement lines on stdout.
     json_start = out.find("\n[")
@@ -239,7 +238,7 @@ def test_fix_github_format(tmp_path, capsys):
         "SKILL.md",
         "name: helper\ndesription: Use when X.",
     )
-    rc = main(["--fix", "--format", "github", str(p)])
+    main(["--fix", "--format", "github", str(p)])
     out = capsys.readouterr().out
     assert "::warning" in out or "::error" in out
 
