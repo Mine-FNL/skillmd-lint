@@ -444,7 +444,7 @@ def test_all_sample_skills_pass_strict():
     """The 5 production-quality samples should still pass after rule additions."""
     from pathlib import Path
 
-    samples = Path("/tmp/skillmd-lint-init/examples")
+    samples = Path(__file__).resolve().parent.parent / "examples"
     for sub in samples.iterdir():
         if not sub.is_dir():
             continue

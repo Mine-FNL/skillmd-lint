@@ -407,6 +407,5 @@ def test___main___subprocess(tmp_path):
         [sys.executable, "-m", "skillmd_lint", str(tmp_path)],
         capture_output=True,
         text=True,
-        cwd="/tmp/skillmd-lint-init",
     )
     assert result.returncode == 0
