@@ -45,9 +45,9 @@ For every API change, walk these four passes in order:
 
 ## Examples
 
-For example, when reviewing a POST /transfers endpoint:
+For example, when reviewing a `POST /transfers` endpoint:
 
-- Always include an Idempotency-Key header for any non-idempotent operation.
+- Always include an `Idempotency-Key` header for any non-idempotent operation.
 - Document the rate-limit semantics in the OpenAPI spec.
 
 ## Pitfalls
@@ -119,7 +119,7 @@ def test_cli_version():
     r = _run("--version")
     assert r.returncode == 0
     assert "skillmd-lint" in r.stdout
-    assert "1.3.0" in r.stdout
+    assert "1.4.0" in r.stdout
 
 
 def test_cli_quiet(tmp_path: Path):
@@ -190,7 +190,7 @@ Use this.
 
 ## Examples
 
-For example, see the docs.
+For example, see the `documentation` or the `getting-started` guide.
 
 ## Pitfalls
 

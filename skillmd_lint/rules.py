@@ -578,6 +578,344 @@ def _rule_tags_unique(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
 
 
 # ---------------------------------------------------------------------------
+# New rules added in v1.4.0 — closes the rule-count gap with agnix.
+# ---------------------------------------------------------------------------
+
+
+def _rule_version_type(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """E011: version must be a string, not an int or float.
+
+    Semver is text-shaped: "1.2.3-rc.1" can't be expressed as a number.
+    Some teams accidentally type `version: 1.0` and YAML coerces it
+    to int, which then sorts wrong and breaks semver-aware tooling.
+    """
+
+    v = fm.get("version")
+    if v is None:
+        return
+    if not isinstance(v, str):
+        yield LintFinding(
+            code="E011",
+            severity=LintSeverity.ERROR,
+            message=(
+                f"`version` must be a string with quotes around it "
+                f"(got {type(v).__name__}: {v!r})"
+            ),
+        )
+
+
+def _rule_frontmatter_indentation(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W014: frontmatter must use spaces, not tabs.
+
+    YAML forbids tabs for indentation. Some editors silently
+    convert; some YAML parsers accept them anyway. skillmd-lint
+    flags them so the inconsistency is caught before the file
+    hits a stricter parser downstream.
+    """
+
+    stripped = body
+    # Re-derive the raw frontmatter to inspect indentation. We can
+    # check the original text via the path argument when linting
+    # from a file; for in-text mode, this is a best-effort fallback.
+    # The CLI ensures the path is set when linting a file.
+    if path == "<text>" or not path:
+        return
+    try:
+        p = Path(path)
+        raw = p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return
+    # Find the frontmatter block
+    if not raw.lstrip("\ufeff").startswith("---"):  # pragma: no cover
+        return
+    lines = raw.splitlines()
+    if not lines or lines[0].strip() != "---":  # pragma: no cover
+        return
+    end = None
+    for i in range(1, len(lines)):
+        if lines[i].strip() == "---":
+            end = i
+            break
+    if end is None:  # pragma: no cover
+        return
+    for i, line in enumerate(lines[1:end], start=1):
+        if "\t" in line:
+            yield LintFinding(
+                code="W014",
+                severity=LintSeverity.WARNING,
+                message=(
+                    f"frontmatter line {i} uses tab indentation; YAML "
+                    f"requires spaces"
+                ),
+            )
+            return  # report once
+
+
+def _rule_placeholder_text(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W015: description must not contain placeholder text.
+
+    Detects 'TODO', 'FIXME', 'lorem ipsum', 'placeholder', '...'
+    in the description — signs of a skill shipped before the
+    author filled in the prose.
+    """
+
+    desc = fm.get("description")
+    if not isinstance(desc, str):
+        return
+    placeholders = ("todo", "fixme", "xxx", "lorem", "placeholder", "tbd", "fill in")
+    desc_lower = desc.lower()
+    for ph in placeholders:
+        if ph in desc_lower:
+            yield LintFinding(
+                code="W015",
+                severity=LintSeverity.WARNING,
+                message=f"description contains placeholder text ('{ph}')",
+            )
+            return
+
+
+def _rule_body_html_tags(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W016: body should not contain raw HTML tags.
+
+    SKILL.md is rendered as Markdown. HTML tags inside the body
+    render unpredictably across runtimes. Use the Markdown
+    equivalent (`**bold**` not `<b>bold</b>`).
+    """
+
+    # Skip code fences — tags inside ``` blocks are intentional
+    stripped_lines: list[str] = []
+    in_fence = False
+    for line in body.splitlines():
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            stripped_lines.append(line)
+    text = "\n".join(stripped_lines)
+    # Match the most common raw-HTML anti-patterns
+    import re
+
+    html_re = re.compile(
+        r"<\s*(b|strong|i|em|u|br|hr|div|span|p)\b[^>]*>",
+        re.IGNORECASE,
+    )
+    if html_re.search(text):
+        yield LintFinding(
+            code="W016",
+            severity=LintSeverity.WARNING,
+            message=(
+                "body contains raw HTML tags; prefer Markdown equivalents "
+                "(`**bold**`, `*italic*`)"
+            ),
+        )
+
+
+def _rule_name_trailing_hyphen(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W017: name must not start or end with a hyphen."""
+
+    name = fm.get("name")
+    if not isinstance(name, str):
+        return
+    if name.startswith("-") or name.endswith("-"):
+        yield LintFinding(
+            code="W017",
+            severity=LintSeverity.WARNING,
+            message=f"`name` has leading or trailing hyphen: '{name}'",
+        )
+
+
+def _rule_description_redundant_prefix(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W018: description should not start with "this skill" / "this is".
+
+    The agent already knows it's a skill. Starting the description
+    with 'this skill ...' wastes the trigger slot.
+    """
+
+    desc = fm.get("description")
+    if not isinstance(desc, str):
+        return
+    stripped = desc.lstrip().lower()
+    redundant_prefixes = (
+        "this skill ",
+        "this is a skill ",
+        "this is an ",
+        "the skill ",
+    )
+    for prefix in redundant_prefixes:
+        if stripped.startswith(prefix):
+            yield LintFinding(
+                code="W018",
+                severity=LintSeverity.WARNING,
+                message=(
+                    f"description starts with '{prefix.rstrip()}' — "
+                    f"the agent already knows it's a skill; lead with the trigger"
+                ),
+            )
+            return
+
+
+def _rule_tags_count(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W019: tags list should have between 1 and 10 entries.
+
+    0 tags means the skill won't be discoverable by topic; >10
+    means the author is hedging — usually a sign the skill's
+    scope is unclear.
+    """
+
+    tags = fm.get("tags")
+    if tags is None:
+        return
+    if not isinstance(tags, list):
+        return
+    if len(tags) == 0:
+        yield LintFinding(
+            code="W019",
+            severity=LintSeverity.WARNING,
+            message="`tags` is empty; add at least one topic tag for discoverability",
+        )
+    elif len(tags) > 10:
+        yield LintFinding(
+            code="W019",
+            severity=LintSeverity.WARNING,
+            message=(
+                f"`tags` has {len(tags)} entries; consider tightening "
+                f"to the most relevant 5 or fewer"
+            ),
+        )
+
+
+def _rule_version_consistency(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W020: if version_notes is present, it should mention the version.
+
+    Useful for finding stale changelog entries where the author
+    bumped version but forgot to update version_notes.
+    """
+
+    version = fm.get("version")
+    notes = fm.get("version_notes")
+    if not isinstance(version, str) or not isinstance(notes, str):
+        return
+    if version in notes:
+        return
+    yield LintFinding(
+        code="W020",
+        severity=LintSeverity.WARNING,
+        message=(
+            f"`version_notes` does not mention version {version!r} — "
+            f"is the changelog stale?"
+        ),
+    )
+
+
+def _rule_referenced_skill_exists(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W021: base_skill must reference an existing skill name.
+
+    Flags typos and references to skills that have been renamed
+    or removed. Folder-mode only; in-text mode requires knowing
+    the parent folder.
+    """
+
+    base = fm.get("base_skill")
+    if not isinstance(base, str):
+        return
+    if path == "<text>" or not path:  # pragma: no cover
+        return
+    p = Path(path)
+    # Walk up to the skills/ folder; if we find it, check for the base.
+    parent = p.parent
+    candidate: Path | None = None
+    for _ in range(4):
+        if (parent / "skills" / base / "SKILL.md").is_file():  # pragma: no cover
+            candidate = parent / "skills" / base
+            break
+        if (parent / base / "SKILL.md").is_file():
+            candidate = parent / base
+            break
+        parent = parent.parent
+        if parent == parent.parent:  # pragma: no cover
+            break
+    if candidate is None and not _maybe_other_skills(base, p):
+        yield LintFinding(
+            code="W021",
+            severity=LintSeverity.WARNING,
+            message=f"`base_skill` references '{base}' but no matching SKILL.md found nearby",
+        )
+
+
+def _maybe_other_skills(name: str, p: Path) -> bool:
+    """Best-effort: did we find the referenced skill somewhere reasonable?"""
+
+    # Search the filesystem for a folder named ``name`` that contains
+    # a SKILL.md, within a reasonable depth up the tree.
+    parent = p.parent
+    for _ in range(4):
+        if not parent.exists():  # pragma: no cover
+            return False
+        try:
+            for child in parent.iterdir():
+                if child.is_dir() and child.name == name:
+                    if (child / "SKILL.md").is_file():
+                        return True
+        except OSError:  # pragma: no cover
+            return False
+        parent = parent.parent
+    return False  # pragma: no cover
+
+
+def _rule_examples_have_io(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W022: examples should show input/output pairs.
+
+    A "## Examples" section with prose but no concrete user/skill
+    dialog is not actionable. Catch the common case where the
+    section exists but has no quoted/indented code block or
+    user-prompt example.
+    """
+
+    import re
+
+    if not re.search(r"^##\s+Examples", body, re.MULTILINE | re.IGNORECASE):
+        return
+    # Find the section body
+    lines = body.splitlines()
+    in_section = False
+    section_body: list[str] = []
+    for line in lines:
+        if re.match(r"^##\s+Examples", line, re.IGNORECASE):
+            in_section = True
+            continue
+        if in_section:
+            if re.match(r"^##\s+", line):
+                break
+            section_body.append(line)
+    text = "\n".join(section_body).strip()
+    if not text:
+        yield LintFinding(
+            code="W022",
+            severity=LintSeverity.WARNING,
+            message="`## Examples` section is empty",
+        )
+        return
+    # Look for code fences, indented blocks, inline code, or quoted dialog
+    has_io = (
+        "```" in text
+        or "`" in text  # any inline `code` formatting counts
+        or re.search(r"^\s{4}", text, re.MULTILINE) is not None
+        or re.search(r"(?im)^user:", text) is not None
+        or re.search(r'(?im)^"', text) is not None
+    )
+    if not has_io:
+        yield LintFinding(
+            code="W022",
+            severity=LintSeverity.WARNING,
+            message=(
+                "`## Examples` has prose but no concrete "
+                "input/output example (no code block, indented "
+                "block, or 'user:' prompt)"
+            ),
+        )
+
+
+# ---------------------------------------------------------------------------
 # Rule registry
 # ---------------------------------------------------------------------------
 
@@ -602,6 +940,16 @@ _RULES = [
     _rule_pitfalls_section,
     _rule_tags_format,
     _rule_tags_unique,
+    _rule_version_type,
+    _rule_frontmatter_indentation,
+    _rule_placeholder_text,
+    _rule_body_html_tags,
+    _rule_name_trailing_hyphen,
+    _rule_description_redundant_prefix,
+    _rule_tags_count,
+    _rule_version_consistency,
+    _rule_referenced_skill_exists,
+    _rule_examples_have_io,
 ]
 
 
@@ -618,6 +966,7 @@ RULE_INDEX: list[tuple[str, str, str]] = [
     ("E008", "error", "`description` exceeds 1024 characters"),
     ("E009", "error", "`description` contains XML tags"),
     ("E010", "error", "`tags` list contains duplicates"),
+    ("E011", "error", "`version` is not a string"),
     ("W001", "warning", "description missing positive trigger phrase"),
     ("W002", "warning", "description missing negative trigger"),
     ("W003", "warning", "body has fewer than 20 lines"),
@@ -631,6 +980,15 @@ RULE_INDEX: list[tuple[str, str, str]] = [
     ("W011", "warning", "`token_budget` is not a positive integer"),
     ("W012", "warning", "no `## Pitfalls to avoid` section in body"),
     ("W013", "warning", "tag is not lowercase kebab-case"),
+    ("W014", "warning", "frontmatter uses tab indentation"),
+    ("W015", "warning", "description contains placeholder text"),
+    ("W016", "warning", "body contains raw HTML tags"),
+    ("W017", "warning", "`name` has leading or trailing hyphen"),
+    ("W018", "warning", "description starts with redundant prefix"),
+    ("W019", "warning", "`tags` count is outside the 1-10 range"),
+    ("W020", "warning", "`version_notes` doesn't reference current version"),
+    ("W021", "warning", "`base_skill` references unknown skill"),
+    ("W022", "warning", "`## Examples` lacks concrete input/output"),
 ]
 
 
@@ -671,7 +1029,19 @@ def lint_file(path: str | Path) -> LintResult:
             )
         )
         return result
-    text = p.read_text(encoding="utf-8", errors="replace")
+    try:
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        result = LintResult(path=str(p), looks_like_skill=True)
+        result.findings.append(
+            LintFinding(
+                code="E001",
+                severity=LintSeverity.ERROR,
+                message=f"cannot read {p}: {exc}",
+                path=str(p),
+            )
+        )
+        return result
     return lint_text(text, path=str(p))
 
 

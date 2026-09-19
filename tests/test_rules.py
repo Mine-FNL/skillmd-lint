@@ -50,7 +50,7 @@ For every API change, walk these four passes in order:
 
 ## Examples
 
-For example, when reviewing a POST /transfers endpoint:
+For example, when reviewing a `POST /transfers` endpoint:
 
 - Always include an Idempotency-Key header for any non-idempotent operation.
 - Return the same response body on retry with the same key.

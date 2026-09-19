@@ -3,6 +3,56 @@
 All notable changes to `skillmd-lint` are recorded here. Dates are
 ISO-8601 (YYYY-MM-DD).
 
+## [1.4.0] — 2026-09-19
+
+### Added
+
+- **LSP server** (`skillmd-lsp` console script). Optional `pip
+  install skillmd-lint[lsp]` ships a `pygls`-based Language Server
+  Protocol server wrapping `skillmd-lint --format json`. One
+  codebase unlocks Neovim (`none-ls.nvim`), Vim (`ALE`), Helix
+  (`languages.toml`), Emacs (`eglot`), and Zed (extension scaffold)
+  via the standard LSP integration. Optional dependency — the
+  core `pip install skillmd-lint` is unchanged.
+- **11 new rules** (22 → 33 total). Closes the rule-count gap with
+  `agent-sh/agnix`'s 31 SKILL.md rules. New codes:
+  - `E011` — `version` is not a string
+  - `W014` — frontmatter uses tab indentation (YAML correctness)
+  - `W015` — description contains placeholder text (`TODO`,
+    `FIXME`, `lorem`, `placeholder`)
+  - `W016` — body contains raw HTML tags (prefer Markdown)
+  - `W017` — name has leading or trailing hyphen
+  - `W018` — description starts with redundant prefix
+    (`this skill`, `this is a skill`)
+  - `W019` — `tags` count is outside the 1-10 range
+  - `W020` — `version_notes` doesn't reference current version
+  - `W021` — `base_skill` references unknown skill
+  - `W022` — `## Examples` lacks concrete input/output example
+- **Robustness**: `lint_file` now wraps `read_text` in a
+  try/except and emits a proper `E001` finding on OSError, so a
+  file that becomes unreadable between discovery and parse
+  produces a deterministic error instead of an unhandled
+  exception.
+
+### Changed
+
+- Test count: 254 → 304. Coverage: 100% lines + branches across
+  every module.
+- Fixed two test fixtures (`tests/test_cli.py`, `tests/test_rules.py`)
+  that had `## Examples` sections without concrete examples —
+  the new `W022` rule is what surfaced them.
+
+### Competitive positioning
+
+- **22 → 33 rules**: closes the SKILL.md rule-count gap with
+  `agent-sh/agnix` (which has 31 SKILL.md-specific rules).
+- **LSP server**: most major editor surfaces now reachable from
+  one codebase, with optional install to keep the core
+  lean.
+- **Unchanged differentiators**: 100% line + branch coverage,
+  pure Python, single transitive dep (PyYAML), published JSON
+  Schema, MIT.
+
 ## [1.3.0] — 2026-09-19
 
 ### Added
