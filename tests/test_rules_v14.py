@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
 from skillmd_lint.rules import lint_file, lint_text
 
 
-def _make(fm: str, body: str = None) -> str:
+def _make(fm: str, body: str | None = None) -> str:
     if body is None:
         body = (
             "\n## When to use\n\nUse this skill.\n\n"
@@ -101,21 +99,30 @@ def test_w015_clean_description_no_trigger():
 
 
 def test_w016_bold_tag_in_body_triggers():
-    body = "\n## When to use\n\nUse this.\n\n## Examples\n\nSee `docs`.\n\n## Pitfalls to avoid\n\n<b>old text</b> here\n"
+    body = (
+        "\n## When to use\n\nUse this.\n\n## Examples\n\nSee `docs`.\n\n"
+        "## Pitfalls to avoid\n\n<b>old text</b> here\n"
+    )
     text = _make("name: helper\ndescription: Use when X.", body)
     r = lint_text(text, "x")
     assert any(f.code == "W016" for f in r.findings)
 
 
 def test_w016_code_fence_html_no_trigger():
-    body = "\n## When to use\n\nUse this.\n\n## Examples\n\nSee `docs`.\n\n## Pitfalls to avoid\n\n```html\n<b>old text</b>\n```\n"
+    body = (
+        "\n## When to use\n\nUse this.\n\n## Examples\n\nSee `docs`.\n\n"
+        "## Pitfalls to avoid\n\n```html\n<b>old text</b>\n```\n"
+    )
     text = _make("name: helper\ndescription: Use when X.", body)
     r = lint_text(text, "x")
     assert not any(f.code == "W016" for f in r.findings)
 
 
 def test_w016_markdown_bold_no_trigger():
-    body = "\n## When to use\n\nUse this.\n\n## Examples\n\nSee `docs`.\n\n## Pitfalls to avoid\n\n**bold text** here\n"
+    body = (
+        "\n## When to use\n\nUse this.\n\n## Examples\n\nSee `docs`.\n\n"
+        "## Pitfalls to avoid\n\n**bold text** here\n"
+    )
     text = _make("name: helper\ndescription: Use when X.", body)
     r = lint_text(text, "x")
     assert not any(f.code == "W016" for f in r.findings)
@@ -205,8 +212,7 @@ def test_w019_reasonable_tags_no_trigger():
 
 def test_w020_version_notes_stale():
     text = _make(
-        "name: helper\ndescription: Use when X.\nversion: 1.5.0\n"
-        "version_notes: fixed bug in 1.4.0"
+        "name: helper\ndescription: Use when X.\nversion: 1.5.0\nversion_notes: fixed bug in 1.4.0"
     )
     r = lint_text(text, "x")
     assert any(f.code == "W020" for f in r.findings)
@@ -285,10 +291,7 @@ def test_w021_base_skill_known_in_sibling_dir(tmp_path):
 
 def test_w021_base_skill_in_text_mode_no_trigger():
     """W021 is no-op when path is <text> (no filesystem to walk)."""
-    text = (
-        "---\nname: child\ndescription: Use when X.\nbase_skill: missing\n"
-        "---\nbody"
-    )
+    text = "---\nname: child\ndescription: Use when X.\nbase_skill: missing\n---\nbody"
     r = lint_text(text, "<text>")
     assert not any(f.code == "W021" for f in r.findings)
 
@@ -370,21 +373,33 @@ def test_w022_empty_examples_section():
 
 
 def test_w022_prose_only_examples():
-    body = "\n## When to use\n\nUse this.\n\n## Examples\n\nThis is a great skill that does many things well.\n\n## Pitfalls to avoid\n\nPitfall here.\n"
+    body = (
+        "\n## When to use\n\nUse this.\n\n## Examples\n\n"
+        "This is a great skill that does many things well.\n\n"
+        "## Pitfalls to avoid\n\nPitfall here.\n"
+    )
     text = _make("name: helper\ndescription: Use when X.", body)
     r = lint_text(text, "x")
     assert any(f.code == "W022" for f in r.findings)
 
 
 def test_w022_code_block_examples_no_trigger():
-    body = "\n## When to use\n\nUse this.\n\n## Examples\n\n```python\nhelper.do_thing()\n```\n\n## Pitfalls to avoid\n\nPitfall here.\n"
+    body = (
+        "\n## When to use\n\nUse this.\n\n## Examples\n\n"
+        "```python\nhelper.do_thing()\n```\n\n"
+        "## Pitfalls to avoid\n\nPitfall here.\n"
+    )
     text = _make("name: helper\ndescription: Use when X.", body)
     r = lint_text(text, "x")
     assert not any(f.code == "W022" for f in r.findings)
 
 
 def test_w022_inline_code_examples_no_trigger():
-    body = "\n## When to use\n\nUse this.\n\n## Examples\n\nUse `helper.do_thing()` to start.\n\n## Pitfalls to avoid\n\nPitfall here.\n"
+    body = (
+        "\n## When to use\n\nUse this.\n\n## Examples\n\n"
+        "Use `helper.do_thing()` to start.\n\n"
+        "## Pitfalls to avoid\n\nPitfall here.\n"
+    )
     text = _make("name: helper\ndescription: Use when X.", body)
     r = lint_text(text, "x")
     assert not any(f.code == "W022" for f in r.findings)
@@ -405,6 +420,7 @@ def test_w022_no_examples_section_no_trigger():
 
 def test_rule_count_now_thirty_three():
     from skillmd_lint.rules import RULE_INDEX
+
     # 22 (v1.3.0) + 1 (E011) + 9 new warnings (W014-W022) + 1 (W019 retest)
     # = 32 originally; current count after fixes
     assert len(RULE_INDEX) >= 32
@@ -412,6 +428,7 @@ def test_rule_count_now_thirty_three():
 
 def test_rule_registry_includes_v14_codes():
     from skillmd_lint.rules import RULE_INDEX
+
     codes = {c for c, _, _ in RULE_INDEX}
     assert "E011" in codes
     for code in ("W014", "W015", "W016", "W017", "W018", "W019", "W020", "W021", "W022"):
@@ -426,6 +443,7 @@ def test_rule_registry_includes_v14_codes():
 def test_all_sample_skills_pass_strict():
     """The 5 production-quality samples should still pass after rule additions."""
     from pathlib import Path
+
     samples = Path("/tmp/skillmd-lint-init/examples")
     for sub in samples.iterdir():
         if not sub.is_dir():

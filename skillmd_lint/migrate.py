@@ -18,10 +18,9 @@ format from the file path and forwards to the appropriate parser.
 from __future__ import annotations
 
 import re
-import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 
 @dataclass
@@ -73,7 +72,9 @@ def _parse_claude_md(text: str) -> tuple[dict, str, list[str]]:
         if len(desc) > 1024:
             desc = desc[:1021] + "..."
             warnings.append("description truncated to 1024 chars")
-        wrapped = f"Use when {_lower_first(desc)}. Do not use when in scope of a more specific skill."
+        wrapped = (
+            f"Use when {_lower_first(desc)}. Do not use when in scope of a more specific skill."
+        )
         if len(wrapped) > 1024:
             wrapped = wrapped[:1021] + "..."
         fm["description"] = wrapped
@@ -114,7 +115,12 @@ def _parse_agents_md(text: str) -> tuple[dict, str, list[str]]:
     if m:
         raw = m.group(1).strip()
         # Strip common prefixes like "Agents:", "Agent:", "AGENTS"
-        raw = re.sub(r"^(agents?|agent instructions?|for)\s*[:\-]?\s*", "", raw, flags=re.IGNORECASE)
+        raw = re.sub(
+            r"^(agents?|agent instructions?|for)\s*[:\-]?\s*",
+            "",
+            raw,
+            flags=re.IGNORECASE,
+        )
         name = _slugify(raw) or "agents-md-skill"  # pragma: no cover (slug fallback)
         fm["name"] = name
 
@@ -130,7 +136,9 @@ def _parse_agents_md(text: str) -> tuple[dict, str, list[str]]:
         if len(desc) > 1024:  # pragma: no cover
             desc = desc[:1021] + "..."
             warnings.append("description truncated to 1024 chars")
-        wrapped = f"Use when {_lower_first(desc)}. Do not use when in scope of a more specific skill."
+        wrapped = (
+            f"Use when {_lower_first(desc)}. Do not use when in scope of a more specific skill."
+        )
         if len(wrapped) > 1024:  # pragma: no cover
             wrapped = wrapped[:1021] + "..."
         fm["description"] = wrapped
@@ -166,12 +174,16 @@ def _parse_cursorrules(text: str) -> tuple[dict, str, list[str]]:
     # Name will be overridden by the caller once it knows the source path.
 
     # First 1-3 non-empty lines → description, capped at 1024 chars
-    lines = [ln.strip() for ln in body.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    lines = [
+        ln.strip() for ln in body.splitlines() if ln.strip() and not ln.strip().startswith("#")
+    ]
     desc_source = " ".join(lines[:3]) if lines else "Cursor rules converted to SKILL.md."
     if len(desc_source) > 1024:
         desc_source = desc_source[:1021] + "..."
         warnings.append("description truncated to 1024 chars")
-    wrapped = f"Use when {_lower_first(desc_source)}. Do not use when in scope of a more specific skill."
+    wrapped = (
+        f"Use when {_lower_first(desc_source)}. Do not use when in scope of a more specific skill."
+    )
     if len(wrapped) > 1024:
         wrapped = wrapped[:1021] + "..."
     fm["description"] = wrapped
@@ -311,7 +323,7 @@ def migrate_file(
         slug = _slugify(parent_name)
         if slug:
             fm["name"] = slug
-        elif src.parent == Path("."):
+        elif src.parent == Path():
             # Cwd fallback
             fm["name"] = "cursor-skill"  # pragma: no cover
         # Else: keep the default 'cursorrules-skill'
@@ -330,7 +342,7 @@ def migrate_file(
             source=str(src),
             target=str(out_path),
             format_detected=fmt,
-            warnings=warnings + [f"write error: {exc}"],
+            warnings=[*warnings, f"write error: {exc}"],
             success=False,
         )
 

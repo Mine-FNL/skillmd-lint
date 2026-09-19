@@ -14,16 +14,16 @@ a SKILL.md file.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import yaml
 
 from .rules import (
     FRONTMATTER_TYPO_MAP,
-    LintResult,
     NAME_RE,
     VALID_SKILL_TYPES,
+    LintResult,
 )
 
 _SAFE_FIXES: dict[str, Callable[[dict, str], tuple[dict, str, str | None]]] = {}
@@ -305,9 +305,7 @@ def apply_fixes(
                 attempted_codes.add(code)
                 new_fm, new_body, desc = _UNSAFE_FIXES[code](fm, body)
                 if desc:
-                    applied.append(
-                        FixApplication(code=code, description=desc, unsafe=True)
-                    )
+                    applied.append(FixApplication(code=code, description=desc, unsafe=True))
                     fm, body = new_fm, new_body
 
     if not applied:
@@ -367,7 +365,7 @@ def list_fixable_codes(unsafe: bool = False) -> list[str]:
 
     codes = sorted(_SAFE_FIXES.keys())
     if unsafe:
-        codes.extend(sorted(c for c in _UNSAFE_FIXES.keys() if c not in _SAFE_FIXES))
+        codes.extend(sorted(c for c in _UNSAFE_FIXES if c not in _SAFE_FIXES))
     return codes
 
 

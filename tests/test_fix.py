@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from textwrap import dedent
-
-import pytest
-
 from skillmd_lint import fix
 from skillmd_lint.rules import lint_text
 
 
-def _make_skill(frontmatter: str, body: str = "\n## When to use\n\n## Examples\n\n## Pitfalls to avoid\n") -> str:
+def _make_skill(
+    frontmatter: str,
+    body: str = "\n## When to use\n\n## Examples\n\n## Pitfalls to avoid\n",
+) -> str:
     return f"---\n{frontmatter}\n---\n{body}"
 
 
@@ -69,11 +68,9 @@ def test_fix_e010_dedupes_tags():
 
 
 def test_fix_e010_no_dupes_is_noop():
-    text = _make_skill(
-        "name: helper\ndescription: Use when X.\ntags:\n  - python\n  - helper"
-    )
+    text = _make_skill("name: helper\ndescription: Use when X.\ntags:\n  - python\n  - helper")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     # E010 may or may not fire depending on rule's exact behaviour with
     # case-sensitive matching; we only require no fix to be applied if
     # the rule didn't fire.
@@ -90,9 +87,7 @@ def test_fix_e010_no_dupes_is_noop():
 
 
 def test_fix_w013_normalises_tag_case():
-    text = _make_skill(
-        "name: helper\ndescription: Use when X.\ntags:\n  - Python\n  - API Helper"
-    )
+    text = _make_skill("name: helper\ndescription: Use when X.\ntags:\n  - Python\n  - API Helper")
     result = lint_text(text, "x")
     new_text, applied = fix.apply_fixes(text, result)
     # If the rule fired, the fix should have applied
@@ -123,9 +118,7 @@ def test_fix_w013_handles_underscores_and_spaces():
 
 
 def test_fix_w010_strips_v_prefix():
-    text = _make_skill(
-        "name: helper\ndescription: Use when X.\nversion: v1.2.3"
-    )
+    text = _make_skill("name: helper\ndescription: Use when X.\nversion: v1.2.3")
     result = lint_text(text, "x")
     new_text, applied = fix.apply_fixes(text, result)
     assert any(a.code == "W010" for a in applied)
@@ -133,9 +126,7 @@ def test_fix_w010_strips_v_prefix():
 
 
 def test_fix_w010_no_prefix_is_noop():
-    text = _make_skill(
-        "name: helper\ndescription: Use when X.\nversion: 1.2.3"
-    )
+    text = _make_skill("name: helper\ndescription: Use when X.\nversion: 1.2.3")
     result = lint_text(text, "x")
     new_text, applied = fix.apply_fixes(text, result)
     # If the rule didn't fire, no fix; if it did, no harm done.
@@ -144,11 +135,9 @@ def test_fix_w010_no_prefix_is_noop():
 
 def test_fix_w010_complex_semver_unchanged():
     """v-prefix is stripped only when the result is still valid semver."""
-    text = _make_skill(
-        "name: helper\ndescription: Use when X.\nversion: v1.2.3-rc.1"
-    )
+    text = _make_skill("name: helper\ndescription: Use when X.\nversion: v1.2.3-rc.1")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     # Complex prerelease semver may not be flagged; if it isn't, no fix
     if any(f.code == "W010" for f in result.findings):
         assert applied  # some fix happened
@@ -160,9 +149,7 @@ def test_fix_w010_complex_semver_unchanged():
 
 
 def test_fix_w011_string_to_int():
-    text = _make_skill(
-        "name: helper\ndescription: Use when X.\ntoken_budget: \"1500\""
-    )
+    text = _make_skill('name: helper\ndescription: Use when X.\ntoken_budget: "1500"')
     result = lint_text(text, "x")
     new_text, applied = fix.apply_fixes(text, result)
     if any(f.code == "W011" for f in result.findings):
@@ -177,19 +164,15 @@ def test_fix_w011_string_to_int():
 
 
 def test_fix_e004_unsafe_default_off():
-    text = _make_skill(
-        "name: MySkill\ndescription: Use when X."
-    )
+    text = _make_skill("name: MySkill\ndescription: Use when X.")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result, unsafe=False)
+    _new_text, applied = fix.apply_fixes(text, result, unsafe=False)
     # Without --unsafe-fix, E004 should not be applied.
     assert not any(a.code == "E004" for a in applied)
 
 
 def test_fix_e004_unsafe_enabled():
-    text = _make_skill(
-        "name: MySkill\ndescription: Use when X."
-    )
+    text = _make_skill("name: MySkill\ndescription: Use when X.")
     result = lint_text(text, "x")
     new_text, applied = fix.apply_fixes(text, result, unsafe=True)
     if any(f.code == "E004" for f in result.findings):
@@ -200,7 +183,7 @@ def test_fix_e004_unsafe_enabled():
 def test_fix_e004_does_not_change_already_valid():
     text = _make_skill("name: my-skill\ndescription: Use when X.")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result, unsafe=True)
+    _new_text, applied = fix.apply_fixes(text, result, unsafe=True)
     assert not any(a.code == "E004" for a in applied)
 
 
@@ -210,22 +193,18 @@ def test_fix_e004_does_not_change_already_valid():
 
 
 def test_fix_w009_aliases_code():
-    text = _make_skill(
-        "name: helper\ndescription: Use when X.\nskill_type: code"
-    )
+    text = _make_skill("name: helper\ndescription: Use when X.\nskill_type: code")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result, unsafe=True)
+    _new_text, applied = fix.apply_fixes(text, result, unsafe=True)
     if any(f.code == "W009" for f in result.findings):
         # Map says code → specialist
         assert any(a.code == "W009" for a in applied)
 
 
 def test_fix_w009_unknown_alias_is_noop():
-    text = _make_skill(
-        "name: helper\ndescription: Use when X.\nskill_type: ninja"
-    )
+    text = _make_skill("name: helper\ndescription: Use when X.\nskill_type: ninja")
     result = lint_text(text, "x")
-    new_text, applied = fix.apply_fixes(text, result, unsafe=True)
+    _new_text, applied = fix.apply_fixes(text, result, unsafe=True)
     if any(f.code == "W009" for f in result.findings):
         # ninja isn't in alias_map → no fix
         assert not any(a.code == "W009" for a in applied)
@@ -238,7 +217,8 @@ def test_fix_w009_unknown_alias_is_noop():
 
 def test_apply_fixes_no_findings_no_changes():
     text = _make_skill(
-        "name: helper\ndescription: Use when X. Do not use elsewhere.\nskill_type: domain-expert\nversion: 1.0.0\n"
+        "name: helper\ndescription: Use when X. Do not use elsewhere.\n"
+        "skill_type: domain-expert\nversion: 1.0.0\n"
         "tags:\n  - python\n  - helper"
     )
     result = lint_text(text, "x")
@@ -262,7 +242,7 @@ def test_apply_fixes_only_attempts_fired_codes():
     text = _make_skill("name: helper\ndesription: Use when X.")
     result = lint_text(text, "x")
     fired = {f.code for f in result.findings}
-    new_text, applied = fix.apply_fixes(text, result)
+    _new_text, applied = fix.apply_fixes(text, result)
     applied_codes = {a.code for a in applied}
     assert applied_codes.issubset(fired)
 
@@ -288,10 +268,11 @@ def test_schema_export_cli(tmp_path, capsys):
     """schema-export writes a valid JSON Schema to the requested path."""
     import json
     import subprocess
+    import sys
 
     target = tmp_path / "schema.json"
     result = subprocess.run(
-        ["python", "-m", "skillmd_lint", "--schema-export", str(target)],
+        [sys.executable, "-m", "skillmd_lint", "--schema-export", str(target)],
         capture_output=True,
         text=True,
     )
@@ -306,10 +287,11 @@ def test_schema_export_cli(tmp_path, capsys):
 def test_schema_export_cli_no_paths_required(tmp_path):
     """schema-export works without any positional paths."""
     import subprocess
+    import sys
 
     target = tmp_path / "s2.json"
     result = subprocess.run(
-        ["python", "-m", "skillmd_lint", "--schema-export", str(target)],
+        [sys.executable, "-m", "skillmd_lint", "--schema-export", str(target)],
         capture_output=True,
         text=True,
     )
