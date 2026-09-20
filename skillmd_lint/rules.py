@@ -906,6 +906,96 @@ def _rule_examples_have_io(path: str, fm: dict, body: str) -> Iterable[LintFindi
 
 
 # ---------------------------------------------------------------------------
+# Unicode spoofing (W023)
+# ---------------------------------------------------------------------------
+
+
+# Unicode bidi/format controls + zero-width characters that are commonly
+# used in phishing/scoping attacks against humans reading text.
+# - U+202A..U+202E, U+2066..U+2069: bidi embedding/override/isolate
+# - U+200B, U+200C, U+200D, U+FEFF: zero-width space / joiners / BOM
+#
+# Zero-width joiners (U+200D) are legitimately used in emoji sequences
+# like 👨‍👩‍👧‍👦 — flagging those would create noise. We accept them
+# in `body` (where emoji live) but flag them in `name` and
+# `description` where they have no legitimate use.
+_UNICODE_SPOOF_RANGES: tuple[tuple[int, int, str], ...] = (
+    (0x202A, 0x202E, "bidi-override"),    # LRE/RLE/PDF/LRO/RLO
+    (0x2066, 0x2069, "bidi-isolate"),     # LRI/RLI/FSI/PDI
+)
+
+
+def _rule_unicode_spoofing(path: str, fm: dict, body: str) -> Iterable[LintFinding]:
+    """W023: frontmatter must not contain Unicode bidi/zero-width chars.
+
+    Bidi override (U+202E etc.) and zero-width joiners (U+200B/D) in
+    a skill's ``name`` or ``description`` can be used to make the
+    rendered text appear to say one thing while the underlying bytes
+    mean another — a classic supply-chain-attack vector for AI skill
+    descriptions. We flag the dangerous controls in frontmatter
+    fields, plus zero-width chars (U+200B, U+200C, U+FEFF) which
+    have no legitimate use in frontmatter prose. Zero-width joiners
+    are allowed in the body because emoji sequences like
+    👨‍👩‍👧‍👦 depend on them.
+    """
+
+    frontmatter_text = " ".join(str(v) for v in fm.values() if isinstance(v, (str, int, float)))
+
+    # Check frontmatter for bidi controls + zero-width chars
+    def _flag(field_name: str, value: object) -> Iterable[LintFinding]:
+        if not isinstance(value, str):
+            return
+        for start, end, kind in _UNICODE_SPOOF_RANGES:
+            for ch in value:
+                cp = ord(ch)
+                if start <= cp <= end:
+                    yield LintFinding(
+                        code="W023",
+                        severity=LintSeverity.WARNING,
+                        message=(
+                            f"{field_name} contains Unicode bidi control "
+                            f"(U+{cp:04X}, {kind}); this can be used to spoof "
+                            "rendered text"
+                        ),
+                    )
+                    return  # one finding per field is enough
+        for ch in value:
+            cp = ord(ch)
+            if cp in (0x200B, 0x200C, 0xFEFF):
+                yield LintFinding(
+                    code="W023",
+                    severity=LintSeverity.WARNING,
+                    message=(
+                        f"{field_name} contains invisible Unicode "
+                        f"character (U+{cp:04X}); this can hide "
+                        "malicious content in plain-looking text"
+                    ),
+                )
+                return
+
+    for field_name in ("name", "description"):
+        if field_name in fm:
+            yield from _flag(f"`{field_name}`", fm[field_name])
+
+    # tags are list-valued
+    tags = fm.get("tags")
+    if isinstance(tags, list):
+        for tag in tags:
+            if isinstance(tag, str):
+                for start, end, kind in _UNICODE_SPOOF_RANGES:
+                    if any(start <= ord(ch) <= end for ch in tag):
+                        yield LintFinding(
+                            code="W023",
+                            severity=LintSeverity.WARNING,
+                            message=(
+                                f"`tags` contains Unicode bidi control "
+                                f"({kind}); this can spoof rendered tag lists"
+                            ),
+                        )
+                        return
+
+
+# ---------------------------------------------------------------------------
 # Rule registry
 # ---------------------------------------------------------------------------
 
@@ -940,6 +1030,7 @@ _RULES = [
     _rule_version_consistency,
     _rule_referenced_skill_exists,
     _rule_examples_have_io,
+    _rule_unicode_spoofing,
 ]
 
 
@@ -979,6 +1070,7 @@ RULE_INDEX: list[tuple[str, str, str]] = [
     ("W020", "warning", "`version_notes` doesn't reference current version"),
     ("W021", "warning", "`base_skill` references unknown skill"),
     ("W022", "warning", "`## Examples` lacks concrete input/output"),
+    ("W023", "warning", "frontmatter contains Unicode bidi or zero-width characters (spoofing risk)"),
 ]
 
 
