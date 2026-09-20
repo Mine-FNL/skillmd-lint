@@ -3,6 +3,37 @@
 All notable changes to `skillmd-lint` are recorded here. Dates are
 ISO-8601 (YYYY-MM-DD).
 
+## [1.4.1] — 2026-09-20
+
+### Fixed
+
+- **LSP server `python -m skillmd_lint.lsp_server` was a silent no-op**.
+  `lsp_server.py` was missing the `if __name__ == "__main__": main()`
+  guard, so running the module directly loaded the file but never
+  started the server. The `skillmd-lsp` console script entry point
+  worked (it calls `main()` explicitly), but anyone reaching for
+  `python -m skillmd_lint.lsp_server` — including the CI smoke test
+  we just added — got an empty process.
+- **4 tests hard-coded `/tmp/skillmd-lint-init`** as a working
+  directory. The repo is not testable from a fresh clone unless that
+  exact path exists. Replaced with `tmp_path`, `sys.executable`, and
+  a `Path(__file__).resolve().parent.parent / "examples"` so the
+  suite runs from any checkout location.
+
+### Added
+
+- **`tests/test_lsp_smoke.py`** — end-to-end smoke test for the LSP
+  server. Spawns `python -m skillmd_lint.lsp_server` as a subprocess
+  and exchanges real JSON-RPC messages (initialize, malformed frame,
+  partial headers). Three tests; the malformed-frame and
+  partial-headers cases verify the server stays alive across
+  non-fatal protocol errors instead of crashing on bad input.
+- **`lsp-smoke` CI job** — installs with `[lsp]` extra and runs a
+  one-shot LSP initialize handshake. This is the canary that fails
+  loudly if a future regression removes the `[lsp]` extra
+  declaration from `pyproject.toml` or makes the LSP server
+  unstartable from a subprocess.
+
 ## [1.4.0] — 2026-09-19
 
 ### Added

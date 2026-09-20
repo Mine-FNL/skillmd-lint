@@ -403,9 +403,13 @@ def test___main___subprocess(tmp_path):
     f = tmp_path / "SKILL.md"
     f.write_text(VALID_DOC, encoding="utf-8")
 
+    # Run from a fresh tmp dir (no project context) — the test verifies
+    # `python -m skillmd_lint` works as an installed entry point from
+    # anywhere on disk, not from a specific checkout path.
     result = subprocess.run(
         [sys.executable, "-m", "skillmd_lint", str(tmp_path)],
         capture_output=True,
         text=True,
+        cwd=str(tmp_path),
     )
     assert result.returncode == 0
