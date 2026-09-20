@@ -70,6 +70,97 @@ def test_parse_claude_md_skips_code_blocks():
     assert "real paragraph" in fm["description"]
 
 
+def test_parse_claude_md_empty_emits_placeholder():
+    """Empty input must produce a SKILL.md that passes E007.
+
+    Previously, empty CLAUDE.md silently produced a SKILL.md with no
+    description field, which failed the linter with E007. Now we emit
+    a placeholder description + a warning that the author must fill it in.
+    """
+    fm, body, warnings = migrate._parse_claude_md("")
+    assert "description" in fm
+    assert len(fm["description"]) > 0
+    assert any("placeholder" in w or "fill in manually" in w for w in warnings)
+
+
+def test_parse_claude_md_whitespace_only_emits_placeholder():
+    fm, body, warnings = migrate._parse_claude_md("   \n\n   \n")
+    assert "description" in fm
+    assert any("placeholder" in w or "fill in manually" in w for w in warnings)
+
+
+def test_parse_claude_md_single_line_no_paragraph_emits_placeholder():
+    """A heading + a single line with no blank-line paragraph break.
+
+    Previously: no description extracted → failed E007.
+    Now: placeholder description with warning.
+    """
+    text = "# Heading\nsingle line, no paragraph break\n"
+    fm, body, warnings = migrate._parse_claude_md(text)
+    assert "description" in fm
+    assert any("placeholder" in w or "fill in manually" in w for w in warnings)
+
+
+def test_parse_claude_md_skips_list_only_paragraphs():
+    """First paragraph being a markdown list should not become the description.
+
+    Previously: produced "Use when - item 1 - item 2." which is malformed.
+    Now: list is skipped and the next real prose paragraph is used.
+    """
+    text = "# Heading\n\n- item 1\n- item 2\n\nThis is real prose.\n"
+    fm, body, warnings = migrate._parse_claude_md(text)
+    # The description should reference the real prose, not the list items
+    assert "real prose" in fm["description"]
+    assert "- item" not in fm["description"]
+
+
+def test_parse_claude_md_no_double_period_in_wrap():
+    """Description ending in period should not produce '.. Do not use...'.
+
+    Regression: `_lower_first` preserved the trailing period and the
+    wrap added another one.
+    """
+    text = "# Heading\n\nThis ends with a period.\n"
+    fm, body, warnings = migrate._parse_claude_md(text)
+    assert ".. Do not use" not in fm["description"]
+    assert "..\" " not in fm["description"]
+    # The wrap should produce exactly one period before "Do not use"
+    assert ". Do not use when" in fm["description"]
+
+
+def test_parse_claude_md_strips_exclamation_and_question():
+    """Trailing ! and ? should also be normalised — same double-punct risk."""
+    text_a = "# Heading\n\nExclaim!\n"
+    text_b = "# Heading\n\nQuestion?\n"
+    for text in (text_a, text_b):
+        fm, _, _ = migrate._parse_claude_md(text)
+        assert ".. Do not use" not in fm["description"]
+        assert "!." not in fm["description"]
+        assert "?." not in fm["description"]
+
+
+def test_parse_agents_md_empty_emits_placeholder():
+    fm, body, warnings = migrate._parse_agents_md("")
+    assert "description" in fm
+    assert any("placeholder" in w or "fill in manually" in w for w in warnings)
+
+
+def test_parse_agents_md_skips_list_only_paragraphs():
+    text = "# Agent\n\n- bullet one\n- bullet two\n\nReal prose here.\n"
+    fm, body, warnings = migrate._parse_agents_md(text)
+    # `_lower_first` lowercases the first letter of the description
+    # prose, so check case-insensitively.
+    assert "real prose here" in fm["description"].lower()
+    assert "- bullet" not in fm["description"]
+
+
+def test_parse_cursorrules_no_double_period_in_fallback():
+    """Empty .cursorrules must not produce 'cursor rules converted to SKILL.md..'."""
+    fm, body, warnings = migrate._parse_cursorrules("")
+    assert ".." not in fm["description"]
+    assert "cursor rules converted to SKILL.md" in fm["description"]
+
+
 def test_parse_claude_md_default_skill_type():
     text = "# Helper\n\nDescription.\n"
     fm, _body, _warnings = migrate._parse_claude_md(text)

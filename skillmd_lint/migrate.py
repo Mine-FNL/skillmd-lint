@@ -59,7 +59,10 @@ def _parse_claude_md(text: str) -> tuple[dict, str, list[str]]:
         if name:  # pragma: no cover
             fm["name"] = name
 
-    # First non-empty paragraph → description (truncated to 1024 chars)
+    # First non-empty paragraph → description (truncated to 1024 chars).
+    # Skip headings, code blocks, and pure markdown lists — none of those
+    # are valid description prose. A list-as-first-paragraph used to
+    # produce garbage like "Use when - item 1 - item 2".
     paragraphs = re.split(r"\n\s*\n", body)
     for p in paragraphs:
         p = p.strip()
@@ -68,17 +71,30 @@ def _parse_claude_md(text: str) -> tuple[dict, str, list[str]]:
         # Skip pure code blocks
         if p.startswith("```"):
             continue
+        # Skip pure markdown lists (every line starts with a list marker)
+        if all(re.match(r"^\s*[-*+]\s", ln) or not ln.strip() for ln in p.splitlines()):
+            continue
         desc = p.replace("\n", " ").strip()
         if len(desc) > 1024:
             desc = desc[:1021] + "..."
             warnings.append("description truncated to 1024 chars")
-        wrapped = (
-            f"Use when {_lower_first(desc)}. Do not use when in scope of a more specific skill."
-        )
+        wrapped = f"Use when {_lower_first(_strip_trailing_punct(desc))}. Do not use when in scope of a more specific skill."
         if len(wrapped) > 1024:
             wrapped = wrapped[:1021] + "..."
         fm["description"] = wrapped
         break
+
+    # If no extractable paragraph was found, emit a placeholder so the
+    # migrated SKILL.md passes E007 (description required). The author
+    # still has to fill in real prose, but we surface that with a
+    # warning rather than silently producing broken output.
+    if "description" not in fm:
+        fm["description"] = (
+            "Use when migrated from CLAUDE.md; the original file had no "
+            "extractable prose paragraph. Do not use when you have not "
+            "filled in the description manually."
+        )
+        warnings.append("no prose paragraph found; placeholder description emitted — fill in manually before publishing")
 
     # Default version + skill_type if not present
     fm.setdefault("version", "0.1.0")
@@ -124,7 +140,8 @@ def _parse_agents_md(text: str) -> tuple[dict, str, list[str]]:
         name = _slugify(raw) or "agents-md-skill"  # pragma: no cover (slug fallback)
         fm["name"] = name
 
-    # First paragraph → description
+    # First paragraph → description. Same list-skip rule as the
+    # CLAUDE.md parser — list-only paragraphs are not valid prose.
     paragraphs = re.split(r"\n\s*\n", body)
     for p in paragraphs:
         p = p.strip()
@@ -132,17 +149,28 @@ def _parse_agents_md(text: str) -> tuple[dict, str, list[str]]:
             continue
         if p.startswith("```"):
             continue
+        if all(re.match(r"^\s*[-*+]\s", ln) or not ln.strip() for ln in p.splitlines()):
+            continue
         desc = p.replace("\n", " ").strip()
         if len(desc) > 1024:  # pragma: no cover
             desc = desc[:1021] + "..."
             warnings.append("description truncated to 1024 chars")
-        wrapped = (
-            f"Use when {_lower_first(desc)}. Do not use when in scope of a more specific skill."
-        )
+        wrapped = f"Use when {_lower_first(_strip_trailing_punct(desc))}. Do not use when in scope of a more specific skill."
         if len(wrapped) > 1024:  # pragma: no cover
             wrapped = wrapped[:1021] + "..."
         fm["description"] = wrapped
         break
+
+    # Same placeholder fallback as _parse_claude_md — emit a valid
+    # description so the migrated file passes E007, with a warning
+    # so the author knows to fill it in.
+    if "description" not in fm:
+        fm["description"] = (
+            "Use when migrated from AGENTS.md; the original file had no "
+            "extractable prose paragraph. Do not use when you have not "
+            "filled in the description manually."
+        )
+        warnings.append("no prose paragraph found; placeholder description emitted — fill in manually before publishing")
 
     fm.setdefault("version", "0.1.0")
     fm.setdefault("skill_type", "domain-expert")
@@ -173,17 +201,16 @@ def _parse_cursorrules(text: str) -> tuple[dict, str, list[str]]:
     name = "cursorrules-skill"
     # Name will be overridden by the caller once it knows the source path.
 
-    # First 1-3 non-empty lines → description, capped at 1024 chars
-    lines = [
-        ln.strip() for ln in body.splitlines() if ln.strip() and not ln.strip().startswith("#")
-    ]
-    desc_source = " ".join(lines[:3]) if lines else "Cursor rules converted to SKILL.md."
+    # First 1-3 non-empty lines → description, capped at 1024 chars.
+    # Note: no trailing period on the fallback — the wrapper adds its own
+    # sentence, and a stray period here produced "Use when cursor rules
+    # converted to SKILL.md.." with double punctuation.
+    lines = [ln.strip() for ln in body.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    desc_source = " ".join(lines[:3]) if lines else "Cursor rules converted to SKILL.md"
     if len(desc_source) > 1024:
         desc_source = desc_source[:1021] + "..."
         warnings.append("description truncated to 1024 chars")
-    wrapped = (
-        f"Use when {_lower_first(desc_source)}. Do not use when in scope of a more specific skill."
-    )
+    wrapped = f"Use when {_lower_first(_strip_trailing_punct(desc_source))}. Do not use when in scope of a more specific skill."
     if len(wrapped) > 1024:
         wrapped = wrapped[:1021] + "..."
     fm["description"] = wrapped
@@ -225,6 +252,18 @@ def _lower_first(s: str) -> str:
     if not s:  # pragma: no cover
         return s
     return s[0].lower() + s[1:]
+
+
+def _strip_trailing_punct(s: str) -> str:
+    """Strip trailing periods and other sentence-ending punctuation.
+
+    The migrator wraps descriptions in ``Use when <text>. Do not use...``.
+    If ``<text>`` already ends with ``.``, the result is a double period
+    like ``Use when foo.. Do not use...``. This helper normalises so the
+    wrap always produces single-period output.
+    """
+
+    return s.rstrip(".!?")
 
 
 def _render(fm: dict, body: str) -> str:
