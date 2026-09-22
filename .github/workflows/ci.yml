@@ -122,6 +122,33 @@ jobs:
           python -m skillmd_lint --schema /tmp/smoke
           python -m skillmd_lint --list-rules
 
+  lsp-smoke:
+    name: LSP server smoke (initialize + didOpen)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Install with the [lsp] extra so the LSP server actually starts.
+      # Without this, the [lsp] extra is never installed and the
+      # `skillmd-lsp` binary (or `python -m skillmd_lint.lsp_server`)
+      # crashes on first launch — same bug as the missing pygls in the
+      # Homebrew formula. This job exists so a future regression on
+      # either side fails CI loudly.
+      - run: pip install -e ".[lsp]"
+      - name: LSP initialize handshake
+        run: |
+          printf 'Content-Length: 158\r\n\r\n{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"processId":null,"rootUri":null,"capabilities":{}}}' \
+            | python -m skillmd_lint.lsp_server 2>/tmp/lsp-stderr.log \
+            | head -c 500 \
+            | tee /tmp/lsp-init-response.txt
+          # Verify the response advertises our server name. The grep
+          # tolerates JSON formatting variations (whitespace, key order)
+          # because pygls formats with spaces after colons.
+          grep -Eq '"serverInfo"\s*:\s*\{[^}]*"name"\s*:\s*"skillmd-lint"' /tmp/lsp-init-response.txt
+          echo "LSP initialize OK"
+
   release:
     name: Verify release artifacts
     runs-on: ubuntu-latest

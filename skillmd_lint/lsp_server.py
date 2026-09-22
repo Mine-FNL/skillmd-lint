@@ -166,6 +166,10 @@ def main() -> None:  # pragma: no cover
     server.start_io()
 
 
+if __name__ == "__main__":
+    main()
+
+
 __all__ = [
     "LspDiagnostic",
     "findings_to_diagnostics",

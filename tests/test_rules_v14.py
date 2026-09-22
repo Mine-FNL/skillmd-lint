@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from skillmd_lint.rules import lint_file, lint_text
 
 
@@ -441,10 +443,12 @@ def test_rule_registry_includes_v14_codes():
 
 
 def test_all_sample_skills_pass_strict():
-    """The 5 production-quality samples should still pass after rule additions."""
+    """The bundled example skills should still pass after rule additions."""
     from pathlib import Path
 
     samples = Path(__file__).resolve().parent.parent / "examples"
+    if not samples.exists():
+        pytest.skip(f"examples dir not found at {samples}")
     for sub in samples.iterdir():
         if not sub.is_dir():
             continue

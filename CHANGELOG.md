@@ -3,6 +3,54 @@
 All notable changes to `skillmd-lint` are recorded here. Dates are
 ISO-8601 (YYYY-MM-DD).
 
+## [1.4.1] — 2026-09-20
+
+### Fixed
+
+- **LSP server `python -m skillmd_lint.lsp_server` was a silent no-op**.
+  `lsp_server.py` was missing the `if __name__ == "__main__": main()`
+  guard, so running the module directly loaded the file but never
+  started the server. The `skillmd-lsp` console script entry point
+  worked (it calls `main()` explicitly), but anyone reaching for
+  `python -m skillmd_lint.lsp_server` — including the CI smoke test
+  we just added — got an empty process.
+- **4 tests hard-coded `/tmp/skillmd-lint-init`** as a working
+  directory. The repo is not testable from a fresh clone unless that
+  exact path exists. Replaced with `tmp_path`, `sys.executable`, and
+  a `Path(__file__).resolve().parent.parent / "examples"` so the
+  suite runs from any checkout location.
+- **`--migrate` produced broken output for empty / list-only
+  sources**. Empty / whitespace-only / single-line CLAUDE.md or
+  AGENTS.md now emit a placeholder description with a warning,
+  rather than producing a SKILL.md that fails E007. Markdown-list
+  paragraphs are skipped when extracting a description.
+- **Empty `.cursorrules` description had double punctuation**
+  (`"cursor rules converted to SKILL.md.."`). New
+  `_strip_trailing_punct` helper normalises trailing `.!?` so any
+  source ending in punctuation produces single-period output.
+- **Lint failures on `v1.4.1-hardening`** — round-1 portability
+  edits joined several multi-line test fixtures into single lines
+  exceeding ruff's 100-char limit. Restored multi-line form.
+
+### Added
+
+- **`tests/test_lsp_smoke.py`** — end-to-end smoke test for the LSP
+  server. Spawns `python -m skillmd_lint.lsp_server` as a subprocess
+  and exchanges real JSON-RPC messages (initialize, malformed frame,
+  partial headers). Three tests; the malformed-frame and
+  partial-headers cases verify the server stays alive across
+  non-fatal protocol errors instead of crashing on bad input.
+- **`lsp-smoke` CI job** — installs with `[lsp]` extra and runs a
+  one-shot LSP initialize handshake. This is the canary that fails
+  loudly if a future regression removes the `[lsp]` extra
+  declaration from `pyproject.toml` or makes the LSP server
+  unstartable from a subprocess.
+- **W023 — frontmatter contains Unicode bidi/zero-width characters
+  (spoofing risk)**. Flags U+202A–U+202E, U+2066–U+2069, and
+  zero-width chars (U+200B, U+200C, U+FEFF) in `name`, `description`,
+  and `tags`. Body is exempt — ZWJ (U+200D) is required for
+  legitimate emoji sequences like 👨‍👩‍👧‍👦. Rule count 33 → 34.
+
 ## [1.4.0] — 2026-09-19
 
 ### Added

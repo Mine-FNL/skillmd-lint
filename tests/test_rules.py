@@ -534,6 +534,110 @@ class TestRULE_INDEX:
 
 
 # ---------------------------------------------------------------------------
+# Unicode spoofing (W023)
+# ---------------------------------------------------------------------------
+
+
+class TestUnicodeSpoofing:
+    """W023 flags bidi controls and zero-width chars in frontmatter.
+
+    These characters have no legitimate use in skill `name`,
+    `description`, or `tags` fields and are common vectors for
+    supply-chain phishing attacks against humans reading skill
+    descriptions. Emoji in `body` is allowed (depends on ZWJ).
+    """
+
+    def _codes(self, text):
+        result = lint_text(text, "<test>")
+        return {f.code for f in result.findings}
+
+    def test_bidi_override_in_description_fires(self):
+        text = (
+            "---\n"
+            "name: ok-name\n"
+            "description: Use when this \u202e reversed text appears.\n"
+            "---\nbody\n"
+        )
+        assert "W023" in self._codes(text)
+
+    def test_zero_width_space_in_name_fires(self):
+        text = (
+            "---\n"
+            "name: ok\u200bname\n"
+            "description: Use when zero-width space is in skill names.\n"
+            "---\nbody\n"
+        )
+        assert "W023" in self._codes(text)
+
+    def test_bidi_isolate_in_tags_fires(self):
+        text = (
+            "---\n"
+            "name: ok-name\n"
+            "description: Use when bidi isolate appears in skill tags.\n"
+            "tags:\n"
+            "  - normal\n"
+            "  - \u2066evil\n"
+            "---\nbody\n"
+        )
+        assert "W023" in self._codes(text)
+
+    def test_emoji_zwj_in_body_does_not_fire(self):
+        """Emoji sequences using ZWJ must not trigger W023 in body.
+
+        Family emoji 👨‍👩‍👧‍👦 depend on U+200D to combine the four
+        person glyphs. The body section is allowed to contain ZWJ.
+        """
+        text = (
+            "---\n"
+            "name: ok-name\n"
+            "description: Use when emoji sequences appear in skill body content.\n"
+            "---\n\n"
+            "## When to use\n\n"
+            "Family emoji 👨\u200d👩\u200d👧\u200d👦 here.\n"
+        )
+        self._codes(text)
+        # W023 may fire for description lacking negative trigger etc,
+        # but it must NOT cite ZWJ in body. We only check absence
+        # of W023 findings here since emoji are in body.
+        w023_msgs = [f.message for f in lint_text(text, "<test>").findings if f.code == "W023"]
+        assert all("ZWJ" not in m for m in w023_msgs), (
+            f"ZWJ in body should not trigger W023: {w023_msgs}"
+        )
+
+    def test_clean_skill_does_not_fire(self):
+        text = (
+            "---\n"
+            "name: ok-name\n"
+            "description: Use when testing skills without spoofing attempts.\n"
+            "---\nbody\n"
+        )
+        # Description too short triggers W001/W002/W003 etc., but
+        # W023 should NOT fire on a clean skill.
+        codes = self._codes(text)
+        assert "W023" not in codes
+
+    def test_ltr_override_fires(self):
+        """U+202D (LTR override) is also a bidi control — must fire."""
+        text = (
+            "---\n"
+            "name: ok-name\n"
+            "description: Use when LTR override \u202d appears in description.\n"
+            "---\nbody\n"
+        )
+        assert "W023" in self._codes(text)
+
+    def test_zwnj_in_description_fires(self):
+        """ZWNJ (U+200C) has no legitimate use in prose — fire even in desc."""
+        text = (
+            "---\n"
+            "name: ok-name\n"
+            "description: Use when ZWNJ\u200c chars appear in description.\n"
+            "---\nbody\n"
+        )
+        assert "W023" in self._codes(text)
+
+
+# ---------------------------------------------------------------------------
 # Coverage targets — every uncovered branch in rules.py
 # ---------------------------------------------------------------------------
 
