@@ -123,8 +123,8 @@ def test_lsp_server_initializes_and_responds():
     finally:
         try:
             proc.stdin.write(
-    _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
-)
+                _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
+            )
             proc.stdin.flush()
             proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "method": "exit"}))
             proc.stdin.flush()
@@ -159,8 +159,8 @@ def test_lsp_server_does_not_crash_on_malformed_json():
     finally:
         try:
             proc.stdin.write(
-    _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
-)
+                _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
+            )
             proc.stdin.flush()
             proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "method": "exit"}))
             proc.stdin.flush()
@@ -194,8 +194,8 @@ def test_lsp_server_handles_partial_headers():
     finally:
         try:
             proc.stdin.write(
-    _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
-)
+                _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
+            )
             proc.stdin.flush()
             proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "method": "exit"}))
             proc.stdin.flush()

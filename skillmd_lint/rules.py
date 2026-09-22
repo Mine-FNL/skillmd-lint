@@ -920,8 +920,8 @@ def _rule_examples_have_io(path: str, fm: dict, body: str) -> Iterable[LintFindi
 # in `body` (where emoji live) but flag them in `name` and
 # `description` where they have no legitimate use.
 _UNICODE_SPOOF_RANGES: tuple[tuple[int, int, str], ...] = (
-    (0x202A, 0x202E, "bidi-override"),    # LRE/RLE/PDF/LRO/RLO
-    (0x2066, 0x2069, "bidi-isolate"),     # LRI/RLI/FSI/PDI
+    (0x202A, 0x202E, "bidi-override"),  # LRE/RLE/PDF/LRO/RLO
+    (0x2066, 0x2069, "bidi-isolate"),  # LRI/RLI/FSI/PDI
 )
 
 
@@ -1073,8 +1073,7 @@ RULE_INDEX: list[tuple[str, str, str]] = [
     (
         "W023",
         "warning",
-        "frontmatter contains Unicode bidi or zero-width characters "
-        "(spoofing risk)",
+        "frontmatter contains Unicode bidi or zero-width characters (spoofing risk)",
     ),
 ]
 

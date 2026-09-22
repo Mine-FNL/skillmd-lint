@@ -599,10 +599,7 @@ class TestUnicodeSpoofing:
         # W023 may fire for description lacking negative trigger etc,
         # but it must NOT cite ZWJ in body. We only check absence
         # of W023 findings here since emoji are in body.
-        w023_msgs = [
-            f.message for f in lint_text(text, "<test>").findings
-            if f.code == "W023"
-        ]
+        w023_msgs = [f.message for f in lint_text(text, "<test>").findings if f.code == "W023"]
         assert all("ZWJ" not in m for m in w023_msgs), (
             f"ZWJ in body should not trigger W023: {w023_msgs}"
         )

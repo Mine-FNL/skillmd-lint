@@ -123,7 +123,7 @@ def test_parse_claude_md_no_double_period_in_wrap():
     text = "# Heading\n\nThis ends with a period.\n"
     fm, _body, _warnings = migrate._parse_claude_md(text)
     assert ".. Do not use" not in fm["description"]
-    assert "..\" " not in fm["description"]
+    assert '.." ' not in fm["description"]
     # The wrap should produce exactly one period before "Do not use"
     assert ". Do not use when" in fm["description"]
 

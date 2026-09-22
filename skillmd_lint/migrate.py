@@ -218,9 +218,7 @@ def _parse_cursorrules(text: str) -> tuple[dict, str, list[str]]:
     # sentence, and a stray period here produced "Use when cursor rules
     # converted to SKILL.md.." with double punctuation.
     lines = [
-        ln.strip()
-        for ln in body.splitlines()
-        if ln.strip() and not ln.strip().startswith("#")
+        ln.strip() for ln in body.splitlines() if ln.strip() and not ln.strip().startswith("#")
     ]
     desc_source = " ".join(lines[:3]) if lines else "Cursor rules converted to SKILL.md"
     if len(desc_source) > 1024:

@@ -143,8 +143,10 @@ jobs:
             | python -m skillmd_lint.lsp_server 2>/tmp/lsp-stderr.log \
             | head -c 500 \
             | tee /tmp/lsp-init-response.txt
-          # Verify the response advertises our server name.
-          grep -q '"serverInfo":{"name":"skillmd-lint"' /tmp/lsp-init-response.txt
+          # Verify the response advertises our server name. The grep
+          # tolerates JSON formatting variations (whitespace, key order)
+          # because pygls formats with spaces after colons.
+          grep -Eq '"serverInfo"\s*:\s*\{[^}]*"name"\s*:\s*"skillmd-lint"' /tmp/lsp-init-response.txt
           echo "LSP initialize OK"
 
   release:
