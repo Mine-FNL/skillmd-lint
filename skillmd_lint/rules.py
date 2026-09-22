@@ -939,7 +939,7 @@ def _rule_unicode_spoofing(path: str, fm: dict, body: str) -> Iterable[LintFindi
     👨‍👩‍👧‍👦 depend on them.
     """
 
-    frontmatter_text = " ".join(str(v) for v in fm.values() if isinstance(v, (str, int, float)))
+    " ".join(str(v) for v in fm.values() if isinstance(v, (str, int, float)))
 
     # Check frontmatter for bidi controls + zero-width chars
     def _flag(field_name: str, value: object) -> Iterable[LintFinding]:
@@ -1070,7 +1070,12 @@ RULE_INDEX: list[tuple[str, str, str]] = [
     ("W020", "warning", "`version_notes` doesn't reference current version"),
     ("W021", "warning", "`base_skill` references unknown skill"),
     ("W022", "warning", "`## Examples` lacks concrete input/output"),
-    ("W023", "warning", "frontmatter contains Unicode bidi or zero-width characters (spoofing risk)"),
+    (
+        "W023",
+        "warning",
+        "frontmatter contains Unicode bidi or zero-width characters "
+        "(spoofing risk)",
+    ),
 ]
 
 

@@ -78,7 +78,10 @@ def _parse_claude_md(text: str) -> tuple[dict, str, list[str]]:
         if len(desc) > 1024:
             desc = desc[:1021] + "..."
             warnings.append("description truncated to 1024 chars")
-        wrapped = f"Use when {_lower_first(_strip_trailing_punct(desc))}. Do not use when in scope of a more specific skill."
+        wrapped = (
+            f"Use when {_lower_first(_strip_trailing_punct(desc))}. "
+            "Do not use when in scope of a more specific skill."
+        )
         if len(wrapped) > 1024:
             wrapped = wrapped[:1021] + "..."
         fm["description"] = wrapped
@@ -94,7 +97,10 @@ def _parse_claude_md(text: str) -> tuple[dict, str, list[str]]:
             "extractable prose paragraph. Do not use when you have not "
             "filled in the description manually."
         )
-        warnings.append("no prose paragraph found; placeholder description emitted — fill in manually before publishing")
+        warnings.append(
+            "no prose paragraph found; placeholder description emitted — "
+            "fill in manually before publishing"
+        )
 
     # Default version + skill_type if not present
     fm.setdefault("version", "0.1.0")
@@ -155,7 +161,10 @@ def _parse_agents_md(text: str) -> tuple[dict, str, list[str]]:
         if len(desc) > 1024:  # pragma: no cover
             desc = desc[:1021] + "..."
             warnings.append("description truncated to 1024 chars")
-        wrapped = f"Use when {_lower_first(_strip_trailing_punct(desc))}. Do not use when in scope of a more specific skill."
+        wrapped = (
+            f"Use when {_lower_first(_strip_trailing_punct(desc))}. "
+            "Do not use when in scope of a more specific skill."
+        )
         if len(wrapped) > 1024:  # pragma: no cover
             wrapped = wrapped[:1021] + "..."
         fm["description"] = wrapped
@@ -170,7 +179,10 @@ def _parse_agents_md(text: str) -> tuple[dict, str, list[str]]:
             "extractable prose paragraph. Do not use when you have not "
             "filled in the description manually."
         )
-        warnings.append("no prose paragraph found; placeholder description emitted — fill in manually before publishing")
+        warnings.append(
+            "no prose paragraph found; placeholder description emitted — "
+            "fill in manually before publishing"
+        )
 
     fm.setdefault("version", "0.1.0")
     fm.setdefault("skill_type", "domain-expert")
@@ -205,12 +217,19 @@ def _parse_cursorrules(text: str) -> tuple[dict, str, list[str]]:
     # Note: no trailing period on the fallback — the wrapper adds its own
     # sentence, and a stray period here produced "Use when cursor rules
     # converted to SKILL.md.." with double punctuation.
-    lines = [ln.strip() for ln in body.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    lines = [
+        ln.strip()
+        for ln in body.splitlines()
+        if ln.strip() and not ln.strip().startswith("#")
+    ]
     desc_source = " ".join(lines[:3]) if lines else "Cursor rules converted to SKILL.md"
     if len(desc_source) > 1024:
         desc_source = desc_source[:1021] + "..."
         warnings.append("description truncated to 1024 chars")
-    wrapped = f"Use when {_lower_first(_strip_trailing_punct(desc_source))}. Do not use when in scope of a more specific skill."
+    wrapped = (
+        f"Use when {_lower_first(_strip_trailing_punct(desc_source))}. "
+        "Do not use when in scope of a more specific skill."
+    )
     if len(wrapped) > 1024:
         wrapped = wrapped[:1021] + "..."
     fm["description"] = wrapped

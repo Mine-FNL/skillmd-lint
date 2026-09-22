@@ -18,14 +18,14 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-import threading
 import time
-from pathlib import Path
 
 import pytest
 
 # pygls is the LSP runtime; not a hard dep of skillmd-lint itself.
-pygls = pytest.importorskip("pygls", reason="pygls not installed (run `pip install skillmd-lint[lsp]`)")
+pygls = pytest.importorskip(
+    "pygls", reason="pygls not installed (run `pip install skillmd-lint[lsp]`)"
+)
 
 INITIALIZE_REQUEST = {
     "jsonrpc": "2.0",
@@ -122,7 +122,9 @@ def test_lsp_server_initializes_and_responds():
         )
     finally:
         try:
-            proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"}))
+            proc.stdin.write(
+    _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
+)
             proc.stdin.flush()
             proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "method": "exit"}))
             proc.stdin.flush()
@@ -156,7 +158,9 @@ def test_lsp_server_does_not_crash_on_malformed_json():
         assert resp.get("id") == 1, f"did not get initialize response: {resp}"
     finally:
         try:
-            proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"}))
+            proc.stdin.write(
+    _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
+)
             proc.stdin.flush()
             proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "method": "exit"}))
             proc.stdin.flush()
@@ -189,7 +193,9 @@ def test_lsp_server_handles_partial_headers():
         assert resp.get("id") == 1, f"unexpected response: {resp}"
     finally:
         try:
-            proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"}))
+            proc.stdin.write(
+    _encode_lsp_message({"jsonrpc": "2.0", "id": 99, "method": "shutdown"})
+)
             proc.stdin.flush()
             proc.stdin.write(_encode_lsp_message({"jsonrpc": "2.0", "method": "exit"}))
             proc.stdin.flush()

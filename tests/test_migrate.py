@@ -77,14 +77,14 @@ def test_parse_claude_md_empty_emits_placeholder():
     description field, which failed the linter with E007. Now we emit
     a placeholder description + a warning that the author must fill it in.
     """
-    fm, body, warnings = migrate._parse_claude_md("")
+    fm, _body, warnings = migrate._parse_claude_md("")
     assert "description" in fm
     assert len(fm["description"]) > 0
     assert any("placeholder" in w or "fill in manually" in w for w in warnings)
 
 
 def test_parse_claude_md_whitespace_only_emits_placeholder():
-    fm, body, warnings = migrate._parse_claude_md("   \n\n   \n")
+    fm, _body, warnings = migrate._parse_claude_md("   \n\n   \n")
     assert "description" in fm
     assert any("placeholder" in w or "fill in manually" in w for w in warnings)
 
@@ -96,7 +96,7 @@ def test_parse_claude_md_single_line_no_paragraph_emits_placeholder():
     Now: placeholder description with warning.
     """
     text = "# Heading\nsingle line, no paragraph break\n"
-    fm, body, warnings = migrate._parse_claude_md(text)
+    fm, _body, warnings = migrate._parse_claude_md(text)
     assert "description" in fm
     assert any("placeholder" in w or "fill in manually" in w for w in warnings)
 
@@ -108,7 +108,7 @@ def test_parse_claude_md_skips_list_only_paragraphs():
     Now: list is skipped and the next real prose paragraph is used.
     """
     text = "# Heading\n\n- item 1\n- item 2\n\nThis is real prose.\n"
-    fm, body, warnings = migrate._parse_claude_md(text)
+    fm, _body, _warnings = migrate._parse_claude_md(text)
     # The description should reference the real prose, not the list items
     assert "real prose" in fm["description"]
     assert "- item" not in fm["description"]
@@ -121,7 +121,7 @@ def test_parse_claude_md_no_double_period_in_wrap():
     wrap added another one.
     """
     text = "# Heading\n\nThis ends with a period.\n"
-    fm, body, warnings = migrate._parse_claude_md(text)
+    fm, _body, _warnings = migrate._parse_claude_md(text)
     assert ".. Do not use" not in fm["description"]
     assert "..\" " not in fm["description"]
     # The wrap should produce exactly one period before "Do not use"
@@ -140,14 +140,14 @@ def test_parse_claude_md_strips_exclamation_and_question():
 
 
 def test_parse_agents_md_empty_emits_placeholder():
-    fm, body, warnings = migrate._parse_agents_md("")
+    fm, _body, warnings = migrate._parse_agents_md("")
     assert "description" in fm
     assert any("placeholder" in w or "fill in manually" in w for w in warnings)
 
 
 def test_parse_agents_md_skips_list_only_paragraphs():
     text = "# Agent\n\n- bullet one\n- bullet two\n\nReal prose here.\n"
-    fm, body, warnings = migrate._parse_agents_md(text)
+    fm, _body, _warnings = migrate._parse_agents_md(text)
     # `_lower_first` lowercases the first letter of the description
     # prose, so check case-insensitively.
     assert "real prose here" in fm["description"].lower()
@@ -156,7 +156,7 @@ def test_parse_agents_md_skips_list_only_paragraphs():
 
 def test_parse_cursorrules_no_double_period_in_fallback():
     """Empty .cursorrules must not produce 'cursor rules converted to SKILL.md..'."""
-    fm, body, warnings = migrate._parse_cursorrules("")
+    fm, _body, _warnings = migrate._parse_cursorrules("")
     assert ".." not in fm["description"]
     assert "cursor rules converted to SKILL.md" in fm["description"]
 

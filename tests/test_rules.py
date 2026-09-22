@@ -595,7 +595,7 @@ class TestUnicodeSpoofing:
             "## When to use\n\n"
             "Family emoji 👨\u200d👩\u200d👧\u200d👦 here.\n"
         )
-        codes = self._codes(text)
+        self._codes(text)
         # W023 may fire for description lacking negative trigger etc,
         # but it must NOT cite ZWJ in body. We only check absence
         # of W023 findings here since emoji are in body.
