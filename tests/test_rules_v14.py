@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from skillmd_lint.rules import lint_file, lint_text
 
 
